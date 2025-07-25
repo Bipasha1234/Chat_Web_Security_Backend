@@ -60,6 +60,37 @@ const sendGroupMessage = async (req, res) => {
 
 
 
+const createGroup = async (req, res) => {
+  try {
+    console.log("➡️ Create Group Request:", req.body);
+
+    const { groupName, members, profilePic } = req.body;
+    const userId = req.user?._id;
+
+    if (!groupName || !members || members.length < 2) {
+      return res.status(400).json({ message: "Group name and at least 2 members are required" });
+    }
+
+    const newGroup = new Group({
+      name: groupName,
+      profilePic: profilePic || "",
+      members: [userId, ...members],
+      createdBy: userId,
+      admin: userId, 
+      
+    });
+
+    await newGroup.save();
+    console.log("✅ Group created successfully:", newGroup);
+
+    res.status(201).json({ message: "Group created successfully", group: newGroup });
+  } catch (error) {
+    console.error("❌ Error creating group:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
 
 const getGroups = async (req, res) => {
   try {
