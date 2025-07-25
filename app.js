@@ -7,6 +7,9 @@ const CustomerRouter = require('./routes/userRoute');
 const AuthRouter = require('./routes/authRoute');
 const MessageRouter = require('./routes/messageRoute');
 const { app, server } =require( "./config/socket");
+const GroupRouter = require('./routes/groupRoute');
+
+
 const dotenv =require("dotenv");
 dotenv.config();
 app.use(cookieParser());
