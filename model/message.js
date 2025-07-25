@@ -9,8 +9,8 @@ const messageSchema = new mongoose.Schema(
     audio: { type: String, default: "" },
     document: { type: String },
     documentName: { type: String, default: "Document" },
-    isSeen: { type: Boolean, default: false }, // ✅ Added field for read status
-    deletedBy: { type: [mongoose.Schema.Types.ObjectId], default: [] }, // ✅ Track who deleted the message
+    isSeen: { type: Boolean, default: false }, 
+    deletedBy: { type: [mongoose.Schema.Types.ObjectId], default: [] },
   },
   { timestamps: true }
 );
