@@ -50,7 +50,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 app.use('/api/user', CustomerRouter);
 app.use('/api/auth', AuthRouter);
 app.use('/api/messages', MessageRouter);
-
+app.use('/api/groups', GroupRouter);
 
 // Start the server
 // const port = 3000;
