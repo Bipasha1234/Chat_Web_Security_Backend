@@ -310,29 +310,31 @@ const verifyResetCode = async (req, res) => {
   }
 };
 
-
-// Reset Password Controller
 const resetPassword = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Find user by email
     const user = await Credential.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    if (await isPasswordReused(password, user.passwordHistory)) {
+      return res.status(400).json({ message: "You cannot reuse a previous password" });
     }
 
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Update the user's password
+    user.passwordHistory.push(user.password);
+    if (user.passwordHistory.length > 5) user.passwordHistory.shift();
+
     user.password = hashedPassword;
+    user.passwordLastChanged = new Date();
+
     await user.save();
 
     res.status(200).json({ message: "Password reset successfully" });
-  } catch (error) {
-    console.error("Error in resetPassword:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+    console.error("Reset password error:", err.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
