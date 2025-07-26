@@ -51,37 +51,9 @@ const register = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCK_TIME = 15 * 60 * 1000; // 15 minutes
 
-// Login route
-// const login = async (req, res) => {
-//   const { email, password } = req.body;
-
-//   try {
-//     const user = await Credential.findOne({ email });
-
-//     if (!user) {
-//       return res.status(400).json({ message: "Invalid credentials" });
-//     }
-
-//     const isPasswordCorrect = await bcrypt.compare(password, user.password);
-//     if (!isPasswordCorrect) {
-//       return res.status(400).json({ message: "Invalid credentials" });
-//     }
-
-//     // Generate token after successful login
-//     const token = generateToken(user._id, res);
-//     // Respond with a success message and the generated token
-//     res.status(200).json({
-//       message: "Logged in successfully",
-//       token: token, // Send the generated JWT token
-//     });
-//   } catch (error) {
-//     console.log("Error in login controller", error.message);
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-
-// Login route
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -92,30 +64,51 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // Check if user is currently locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+      const remaining = Math.ceil((user.lockUntil - Date.now()) / 60000);
+      return res.status(403).json({ message: `Account locked. Try again in ${remaining} minute(s)` });
+    }
+
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
     if (!isPasswordCorrect) {
+      user.failedLoginAttempts += 1;
+
+      if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+        user.lockUntil = Date.now() + LOCK_TIME;
+        await user.save();
+        return res.status(403).json({ message: "Too many failed attempts. Account locked for 15 minutes." });
+      }
+
+      await user.save();
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Generate token after successful login
-    const token = generateToken(user._id, res); // Generate a JWT token
+    // Successful login: reset attempts
+    user.failedLoginAttempts = 0;
+    user.lockUntil = null;
+    await user.save();
 
-    // Respond with user details and token
+    // Generate token after successful login
+    const token = generateToken(user._id, res);
+
     res.status(200).json({
       message: "Logged in successfully",
-      token: token, // Send the generated JWT token
+      token,
       user: {
         _id: user._id,
         fullName: user.fullName,
         email: user.email,
         profilePic: user.profilePic || "",
-      }
+      },
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 // Logout route (Clear the cookie)

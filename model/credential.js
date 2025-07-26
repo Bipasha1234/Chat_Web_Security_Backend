@@ -34,8 +34,6 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-
-    // 👇 Added for brute-force protection
     failedLoginAttempts: {
       type: Number,
       default: 0,
