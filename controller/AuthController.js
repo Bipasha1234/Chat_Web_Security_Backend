@@ -6,6 +6,23 @@ const cloudinary = require( "../config/cloudinary.js");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");  // CommonJS for dotenv
+const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
+const MAX_FAILED_ATTEMPTS = 10;
+const LOCK_TIME = 15 * 60 * 1000;
+
+const isPasswordExpired = (lastChanged) => {
+  const now = new Date();
+  const diff = (now - lastChanged) / (1000 * 60 * 60 * 24);
+  return diff > PASSWORD_EXPIRY_DAYS;
+};
+
+const isPasswordReused = async (newPassword, history) => {
+  for (let old of history) {
+    const match = await bcrypt.compare(newPassword, old);
+    if (match) return true;
+  }
+  return false;
+};
 
 // Load environment variables
 dotenv.config();
@@ -67,10 +84,6 @@ const register = async (req, res) => {
   }
 };
 
-
-
-const MAX_FAILED_ATTEMPTS = 10;          // max allowed failed attempts
-const LOCK_TIME = 15 * 60 * 1000;       // lock duration: 15 minutes (milliseconds)
 const loginStep1 = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -268,7 +281,7 @@ const forgotPassword = async (req, res) => {
 
     const resetCode = String(crypto.randomInt(100000, 1000000));
     user.resetCode = await bcrypt.hash(resetCode, 10);
-    user.resetCodeExpires = Date.now() + 15 * 60 * 1000;
+    user.resetCodeExpires = Date.now() + 5 * 60 * 1000;
 
     await user.save();
 
@@ -276,7 +289,7 @@ const forgotPassword = async (req, res) => {
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: "Password Reset Code",
-      text: `Your password reset code is: ${resetCode}`,
+      text: `Your password reset code is: ${resetCode}. It will expire in 5 minutes`,
     });
 
     res.status(200).json({ message: "Reset code sent to your email" });
