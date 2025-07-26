@@ -41,8 +41,15 @@ const userSchema = new mongoose.Schema(
     lockUntil: {
       type: Date,
       default: null,
-    }
+    },
+
+    // In your Credential mongoose schema add:
+mfaCode: { type: String },
+mfaCodeExpires: { type: Date },
+
   },
+
+  
   { timestamps: true }
 );
 

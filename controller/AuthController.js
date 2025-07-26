@@ -278,25 +278,18 @@ const register = async (req, res) => {
       profilePic: profilePic || "",
     });
 
-    // If user creation is successful
-    if (newUser) {
-      // Generate JWT token
-      generateToken(newUser._id, res);
+    // Save the user to the database
+    await newUser.save();
 
-      // Save the user to the database
-      await newUser.save();
+    // Send success response
+    res.status(201).json({
+      message: "User registered successfully",
+      _id: newUser._id,
+      fullName: newUser.fullName,
+      email: newUser.email,
+      profilePic: newUser.profilePic,
+    });
 
-      // Send success response with user details and a success message
-      res.status(201).json({
-        message: "User registered successfully",  // Add this message here
-        _id: newUser._id,
-        fullName: newUser.fullName,
-        email: newUser.email,
-        profilePic: newUser.profilePic,
-      });
-    } else {
-      res.status(400).json({ message: "Invalid user data" });
-    }
   } catch (error) {
     console.log("Error in signup controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
@@ -306,16 +299,13 @@ const register = async (req, res) => {
 
 const MAX_FAILED_ATTEMPTS = 10;          // max allowed failed attempts
 const LOCK_TIME = 15 * 60 * 1000;       // lock duration: 15 minutes (milliseconds)
-const login = async (req, res) => {
+const loginStep1 = async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const user = await Credential.findOne({ email });
 
-    if (!user) {
-      // User not found
-      return res.status(400).json({ message: "User not found" });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
     // Check if account is locked
     if (user.lockUntil && user.lockUntil > Date.now()) {
@@ -325,9 +315,8 @@ const login = async (req, res) => {
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      user.failedLoginAttempts += 1;
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
 
-      // Lock account if max attempts reached
       if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
         user.lockUntil = new Date(Date.now() + LOCK_TIME);
         await user.save();
@@ -338,12 +327,54 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Wrong password" });
     }
 
-    // Successful login: reset lock and attempts
+    // Password correct — reset lock
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
+
+    // Generate 6-digit MFA code
+    const code = (Math.floor(100000 + Math.random() * 900000)).toString();
+
+    // Hash the code before saving
+    user.mfaCode = await bcrypt.hash(code, 10);
+    user.mfaCodeExpires = Date.now() + 5 * 60 * 1000; // 5 mins expiry
+
     await user.save();
 
-    // Generate token after successful login
+    // Send email with code
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Your MFA Verification Code",
+      text: `Your verification code is: ${code}. It expires in 5 minutes.`,
+    });
+
+    res.status(200).json({ mfaRequired: true, message: "Enter the verification code sent to your email." });
+  } catch (error) {
+    console.log("Error in loginStep1:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+const verifyMfaCode = async (req, res) => {
+  const { email, code } = req.body;
+
+  try {
+    const user = await Credential.findOne({ email });
+
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    if (!user.mfaCode || !user.mfaCodeExpires || Date.now() > user.mfaCodeExpires) {
+      return res.status(400).json({ message: "Verification code expired or invalid" });
+    }
+
+    const isMatch = await bcrypt.compare(code, user.mfaCode);
+    if (!isMatch) return res.status(400).json({ message: "Invalid verification code" });
+
+    // Clear MFA code and expiry
+    user.mfaCode = null;
+    user.mfaCodeExpires = null;
+    await user.save();
+
+    // Generate JWT token
     const token = generateToken(user._id, res);
 
     res.status(200).json({
@@ -354,14 +385,13 @@ const login = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         profilePic: user.profilePic || "",
-      }
+      },
     });
   } catch (error) {
-    console.log("Error in login controller", error.message);
+    console.log("Error in verifyMfaCode:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 
 // Logout route (Clear the cookie)
@@ -622,7 +652,7 @@ const updateProfileApp = async (req, res) => {
 // Add getCurrentUser to the exported functions
 module.exports = {
   register,
-  login,
+  loginStep1,
   logout,
   checkAuth,
   updateProfile,
@@ -631,5 +661,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   verifyResetCode,
-  updateProfileApp
+  updateProfileApp,
+  verifyMfaCode
 };

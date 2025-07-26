@@ -3,11 +3,12 @@ const router=express.Router();
 const upload = require("../middleware/uploads");
 
 
-const { login,register,logout,checkAuth,updateProfile,uploadImage,getCurrentUser, forgotPassword, resetPassword, verifyResetCode, updateProfileApp } = require("../controller/AuthController");
+const { loginStep1,register,logout,checkAuth,updateProfile,uploadImage,getCurrentUser, forgotPassword, resetPassword, verifyResetCode, updateProfileApp, verifyMfaCode } = require("../controller/AuthController");
 const  protectRoute  = require("../security/Auth");
 
 
-router.post("/login", login)
+router.post("/login", loginStep1)
+router.post("/verify-mfa", verifyMfaCode); 
 router.post("/register",register)
 router.post("/logout",logout)
 router.get("/check",protectRoute,checkAuth)
