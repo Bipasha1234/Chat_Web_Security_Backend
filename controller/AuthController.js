@@ -1,3 +1,254 @@
+// // const bcrypt = require('bcryptjs');
+// // const jwt = require('jsonwebtoken');
+// // const Credential = require("../model/credential");
+
+// // const SECRET_KEY = "5710a818ab4b04a3276dd4d1bfb818e8ab5588f519525f55cfadd82114be30db";
+
+// // // Register a new user
+// // const register = async (req, res) => {
+// //     try {
+// //         const { email, password, confirmPassword, role } = req.body;
+
+// //         // Check if all fields are provided
+// //         if (!email || !password || !confirmPassword) {
+// //             return res.status(400).json({ message: 'All fields are required' });
+// //         }
+
+// //         // Check if passwords match
+// //         if (password !== confirmPassword) {
+// //             return res.status(400).json({ message: 'Passwords do not match' });
+// //         }
+
+// //         // Check if email already exists
+// //         const existingUser = await Credential.findOne({ email });
+// //         if (existingUser) {
+// //             return res.status(400).json({ message: 'Email already exists' });
+// //         }
+
+// //         // Hash the password
+// //         const hashedPassword = await bcrypt.hash(password, 10);
+
+// //         // Create and save the new user
+// //         const cred = new Credential({ email, password: hashedPassword, role });
+// //         await cred.save();
+
+// //         res.status(201).json({
+// //             message: 'User registered successfully',
+// //             user: { email, role }
+// //         });
+// //     } catch (e) {
+// //         console.error('Error during registration:', e.message);
+// //         res.status(500).json({ message: 'Server error', error: e.message });
+// //     }
+// // };
+
+// // // Login a user
+// // const login = async (req, res) => {
+// //     try {
+// //         const { email, password } = req.body;
+
+// //         // Find the user by email
+// //         const cred = await Credential.findOne({ email });
+// //         if (!cred || !(await bcrypt.compare(password, cred.password))) {
+// //             return res.status(403).json({ message: 'Invalid email or password' });
+// //         }
+
+// //         // Generate JWT token
+// //         const token = jwt.sign(
+// //             { email: cred.email, role: cred.role },
+// //             SECRET_KEY,
+// //             { expiresIn: '1h' }  // Token expires in 1 hour
+// //         );
+
+// //         // Send response with token
+// //         res.json({ token });
+// //     } catch (e) {
+// //         console.error('Error during login:', e.message);
+// //         res.status(500).json({ message: 'Server error', error: e.message });
+// //     }
+// // };
+
+// // module.exports = {
+// //     register,
+// //     login
+// // };
+
+
+
+
+// const bcrypt = require('bcryptjs');
+// const jwt = require('jsonwebtoken');
+// const Credential = require("../model/credential");
+
+// const generateToken = require("../config/utils");
+// // import cloudinary from "../lib/cloudinary.js";
+
+// // const SECRET_KEY = "5710a818ab4b04a3276dd4d1bfb818e8ab5588f519525f55cfadd82114be30db";
+
+// // Register a new user
+// const register = async (req, res) => {
+//     const { confirmPassword, email, password } = req.body;
+  
+//     try {
+//       // Validate required fields
+//       if (!confirmPassword || !email || !password) {
+//         return res.status(400).json({ message: "All fields are required" });
+//       }
+  
+//       // Validate password length
+//       if (password.length < 6) {
+//         return res.status(400).json({ message: "Password must be at least 6 characters" });
+//       }
+  
+//       // Check if passwords match
+//       if (password !== confirmPassword) {
+//         return res.status(400).json({ message: "Passwords do not match" });
+//       }
+  
+//       // Check if email already exists
+//       const user = await Credential.findOne({ email });
+//       if (user) {
+//         return res.status(400).json({ message: "Email already exists" });
+//       }
+  
+//       // Hash the password
+//       const salt = await bcrypt.genSalt(10);
+//       const hashedPassword = await bcrypt.hash(password, salt);
+  
+//       // Create a new user
+//       const newUser = new Credential({
+//         email,
+//         password: hashedPassword,
+//       });
+  
+//       // Save the new user
+//       await newUser.save();
+  
+//       // Respond with user data and JWT token
+//       res.status(201).json({
+//         _id: newUser._id,
+//         email: newUser.email,
+//         token: generateToken(newUser._id), // Add the generated JWT
+//       });
+  
+//     } catch (error) {
+//       console.error("Error in signup controller:", error.message);
+//       res.status(500).json({ message: "Internal Server Error" });
+//     }
+//   };
+  
+
+// // Login route
+// const login = async (req, res) => {
+//     const { email, password } = req.body;
+//   try {
+//     const user = await Credential.findOne({ email });
+
+//     if (!user) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+
+//     const isPasswordCorrect = await bcrypt.compare(password, user.password);
+//     if (!isPasswordCorrect) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+
+//     generateToken(user._id, res);
+
+//     res.status(200).json({
+//         message: "Logged in successfully"
+//     });
+//   } catch (error) {
+//     console.log("Error in login controller", error.message);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
+ 
+
+//    const logout = (req, res) => {
+//     try {
+//       res.cookie("jwt", "", { maxAge: 0 });
+//       res.status(200).json({ message: "Logged out successfully" });
+//     } catch (error) {
+//       console.log("Error in logout controller", error.message);
+//       res.status(500).json({ message: "Internal Server Error" });
+//     }
+//   };
+//   const checkAuth = (req, res) => {
+//     try {
+//       res.status(200).json(req.user);
+//     } catch (error) {
+//       console.log("Error in checkAuth controller", error.message);
+//       res.status(500).json({ message: "Internal Server Error" });
+//     }
+//   };
+
+// module.exports = {
+//     register,
+//     login,
+   
+//     logout,
+//     checkAuth
+// };
+
+
+const bcrypt = require('bcryptjs');
+const Credential = require("../model/credential");
+const generateToken = require("../config/utils");
+const cloudinary = require( "../config/cloudinary.js");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const dotenv = require("dotenv");  // CommonJS for dotenv
+
+// Load environment variables
+dotenv.config();
+// const { sendVerificationEmail } = require('../utils/emailService');
+// const { generateVerificationCode } = require('../Utils/emailVerification.js');
+
+// Register a new user
+// const register = async (req, res) => {
+//   const { fullName, email, password } = req.body;
+//   try {
+//     if (!fullName || !email || !password) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+
+//     if (password.length < 6) {
+//       return res.status(400).json({ message: "Password must be at least 6 characters" });
+//     }
+
+//     const user = await Credential.findOne({ email });
+
+//     if (user) return res.status(400).json({ message: "Email already exists" });
+
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     const newUser = new Credential({
+//       fullName,
+//       email,
+//       password: hashedPassword,
+//     });
+
+//     if (newUser) {
+//       // generate jwt token here
+//       generateToken(newUser._id, res);
+//       await newUser.save();
+
+//       res.status(201).json({
+//         _id: newUser._id,
+//         fullName: newUser.fullName,
+//         email: newUser.email,
+//         profilePic: newUser.profilePic,
+//       });
+//     } else {
+//       res.status(400).json({ message: "Invalid user data" });
+//     }
+//   } catch (error) {
+//     console.log("Error in signup controller", error.message);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 const register = async (req, res) => {
   const { fullName, email, password, profilePic } = req.body;
 
@@ -51,9 +302,10 @@ const register = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_TIME = 15 * 60 * 1000; // 15 minutes
 
+
+const MAX_FAILED_ATTEMPTS = 10;          // max allowed failed attempts
+const LOCK_TIME = 15 * 60 * 1000;       // lock duration: 15 minutes (milliseconds)
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -61,31 +313,32 @@ const login = async (req, res) => {
     const user = await Credential.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      // User not found
+      return res.status(400).json({ message: "User not found" });
     }
 
-    // Check if user is currently locked
+    // Check if account is locked
     if (user.lockUntil && user.lockUntil > Date.now()) {
       const remaining = Math.ceil((user.lockUntil - Date.now()) / 60000);
       return res.status(403).json({ message: `Account locked. Try again in ${remaining} minute(s)` });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
-
     if (!isPasswordCorrect) {
       user.failedLoginAttempts += 1;
 
+      // Lock account if max attempts reached
       if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
-        user.lockUntil = Date.now() + LOCK_TIME;
+        user.lockUntil = new Date(Date.now() + LOCK_TIME);
         await user.save();
         return res.status(403).json({ message: "Too many failed attempts. Account locked for 15 minutes." });
       }
 
       await user.save();
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Wrong password" });
     }
 
-    // Successful login: reset attempts
+    // Successful login: reset lock and attempts
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
     await user.save();
@@ -101,7 +354,7 @@ const login = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         profilePic: user.profilePic || "",
-      },
+      }
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
