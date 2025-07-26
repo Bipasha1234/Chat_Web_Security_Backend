@@ -6,7 +6,8 @@ const cloudinary = require( "../config/cloudinary.js");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");  // CommonJS for dotenv
-const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
+// const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
+const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
 const MAX_FAILED_ATTEMPTS = 10;
 const LOCK_TIME = 15 * 60 * 1000;
 
