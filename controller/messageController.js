@@ -122,34 +122,6 @@ const getMessages = async (req, res) => {
   }
 };
 
-// const getMessages = async (req, res) => {
-//   try {
-//     const { chatPartnerId } = req.params;
-//     const loggedInUserId = req.user._id; 
-
-//     console.log("Logged-in User ID:", loggedInUserId);
-//     console.log("Chat Partner ID:", chatPartnerId);
-
-//     if (!mongoose.Types.ObjectId.isValid(chatPartnerId)) {
-//       return res.status(400).json({ error: "Invalid chat partner ID." });
-//     }
-
-//     const messages = await Message.find({
-//       $or: [
-//         { senderId: new mongoose.Types.ObjectId(loggedInUserId), receiverId: new mongoose.Types.ObjectId(chatPartnerId) },
-//         { senderId: new mongoose.Types.ObjectId(chatPartnerId), receiverId: new mongoose.Types.ObjectId(loggedInUserId) }
-//       ],
-//       deletedBy: { $ne: loggedInUserId }
-//     }).sort({ createdAt: 1 });
-
-//     console.log("Fetched Messages:", messages);
-
-//     res.status(200).json(messages);
-//   } catch (error) {
-//     console.error("Error in getMessages:", error.message);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// };
 
 const mongoose = require("mongoose");
 
