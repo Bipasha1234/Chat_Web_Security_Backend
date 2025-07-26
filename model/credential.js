@@ -46,7 +46,8 @@ const userSchema = new mongoose.Schema(
     // In your Credential mongoose schema add:
 mfaCode: { type: String },
 mfaCodeExpires: { type: Date },
-
+passwordHistory: [{ type: String }], // Store hashes of old passwords
+  passwordLastChanged: { type: Date, default: Date.now }
   },
 
   
