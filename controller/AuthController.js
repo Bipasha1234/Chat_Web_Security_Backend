@@ -253,35 +253,47 @@ const register = async (req, res) => {
   const { fullName, email, password, profilePic } = req.body;
 
   try {
-    // Validation
+    // Basic field validation
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    // Password length min 8, max 64
+    if (password.length < 8 || password.length > 64) {
+      return res.status(400).json({ message: "Password must be between 8 and 64 characters" });
     }
 
-    // Check if the user already exists
+    // Password complexity: at least one uppercase, one lowercase, one digit, one special char
+    const complexityRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
+    if (!complexityRegex.test(password)) {
+      return res.status(400).json({
+        message: "Password must contain uppercase, lowercase, number, and special character",
+      });
+    }
+
+    // Check if user already exists
     const user = await Credential.findOne({ email });
-    if (user) return res.status(400).json({ message: "Email already exists" });
+    if (user) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
     // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
+    // Create user object
     const newUser = new Credential({
       fullName,
       email,
       password: hashedPassword,
       profilePic: profilePic || "",
+      // Optionally, add password history and last changed date here
+      // passwordHistory: [hashedPassword],
+      // passwordLastChangedAt: new Date(),
     });
 
-    // Save the user to the database
     await newUser.save();
 
-    // Send success response
     res.status(201).json({
       message: "User registered successfully",
       _id: newUser._id,
@@ -289,12 +301,12 @@ const register = async (req, res) => {
       email: newUser.email,
       profilePic: newUser.profilePic,
     });
-
   } catch (error) {
     console.log("Error in signup controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 const MAX_FAILED_ATTEMPTS = 10;          // max allowed failed attempts
