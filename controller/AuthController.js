@@ -1,196 +1,3 @@
-// // const bcrypt = require('bcryptjs');
-// // const jwt = require('jsonwebtoken');
-// // const Credential = require("../model/credential");
-
-// // const SECRET_KEY = "5710a818ab4b04a3276dd4d1bfb818e8ab5588f519525f55cfadd82114be30db";
-
-// // // Register a new user
-// // const register = async (req, res) => {
-// //     try {
-// //         const { email, password, confirmPassword, role } = req.body;
-
-// //         // Check if all fields are provided
-// //         if (!email || !password || !confirmPassword) {
-// //             return res.status(400).json({ message: 'All fields are required' });
-// //         }
-
-// //         // Check if passwords match
-// //         if (password !== confirmPassword) {
-// //             return res.status(400).json({ message: 'Passwords do not match' });
-// //         }
-
-// //         // Check if email already exists
-// //         const existingUser = await Credential.findOne({ email });
-// //         if (existingUser) {
-// //             return res.status(400).json({ message: 'Email already exists' });
-// //         }
-
-// //         // Hash the password
-// //         const hashedPassword = await bcrypt.hash(password, 10);
-
-// //         // Create and save the new user
-// //         const cred = new Credential({ email, password: hashedPassword, role });
-// //         await cred.save();
-
-// //         res.status(201).json({
-// //             message: 'User registered successfully',
-// //             user: { email, role }
-// //         });
-// //     } catch (e) {
-// //         console.error('Error during registration:', e.message);
-// //         res.status(500).json({ message: 'Server error', error: e.message });
-// //     }
-// // };
-
-// // // Login a user
-// // const login = async (req, res) => {
-// //     try {
-// //         const { email, password } = req.body;
-
-// //         // Find the user by email
-// //         const cred = await Credential.findOne({ email });
-// //         if (!cred || !(await bcrypt.compare(password, cred.password))) {
-// //             return res.status(403).json({ message: 'Invalid email or password' });
-// //         }
-
-// //         // Generate JWT token
-// //         const token = jwt.sign(
-// //             { email: cred.email, role: cred.role },
-// //             SECRET_KEY,
-// //             { expiresIn: '1h' }  // Token expires in 1 hour
-// //         );
-
-// //         // Send response with token
-// //         res.json({ token });
-// //     } catch (e) {
-// //         console.error('Error during login:', e.message);
-// //         res.status(500).json({ message: 'Server error', error: e.message });
-// //     }
-// // };
-
-// // module.exports = {
-// //     register,
-// //     login
-// // };
-
-
-
-
-// const bcrypt = require('bcryptjs');
-// const jwt = require('jsonwebtoken');
-// const Credential = require("../model/credential");
-
-// const generateToken = require("../config/utils");
-// // import cloudinary from "../lib/cloudinary.js";
-
-// // const SECRET_KEY = "5710a818ab4b04a3276dd4d1bfb818e8ab5588f519525f55cfadd82114be30db";
-
-// // Register a new user
-// const register = async (req, res) => {
-//     const { confirmPassword, email, password } = req.body;
-  
-//     try {
-//       // Validate required fields
-//       if (!confirmPassword || !email || !password) {
-//         return res.status(400).json({ message: "All fields are required" });
-//       }
-  
-//       // Validate password length
-//       if (password.length < 6) {
-//         return res.status(400).json({ message: "Password must be at least 6 characters" });
-//       }
-  
-//       // Check if passwords match
-//       if (password !== confirmPassword) {
-//         return res.status(400).json({ message: "Passwords do not match" });
-//       }
-  
-//       // Check if email already exists
-//       const user = await Credential.findOne({ email });
-//       if (user) {
-//         return res.status(400).json({ message: "Email already exists" });
-//       }
-  
-//       // Hash the password
-//       const salt = await bcrypt.genSalt(10);
-//       const hashedPassword = await bcrypt.hash(password, salt);
-  
-//       // Create a new user
-//       const newUser = new Credential({
-//         email,
-//         password: hashedPassword,
-//       });
-  
-//       // Save the new user
-//       await newUser.save();
-  
-//       // Respond with user data and JWT token
-//       res.status(201).json({
-//         _id: newUser._id,
-//         email: newUser.email,
-//         token: generateToken(newUser._id), // Add the generated JWT
-//       });
-  
-//     } catch (error) {
-//       console.error("Error in signup controller:", error.message);
-//       res.status(500).json({ message: "Internal Server Error" });
-//     }
-//   };
-  
-
-// // Login route
-// const login = async (req, res) => {
-//     const { email, password } = req.body;
-//   try {
-//     const user = await Credential.findOne({ email });
-
-//     if (!user) {
-//       return res.status(400).json({ message: "Invalid credentials" });
-//     }
-
-//     const isPasswordCorrect = await bcrypt.compare(password, user.password);
-//     if (!isPasswordCorrect) {
-//       return res.status(400).json({ message: "Invalid credentials" });
-//     }
-
-//     generateToken(user._id, res);
-
-//     res.status(200).json({
-//         message: "Logged in successfully"
-//     });
-//   } catch (error) {
-//     console.log("Error in login controller", error.message);
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
- 
-
-//    const logout = (req, res) => {
-//     try {
-//       res.cookie("jwt", "", { maxAge: 0 });
-//       res.status(200).json({ message: "Logged out successfully" });
-//     } catch (error) {
-//       console.log("Error in logout controller", error.message);
-//       res.status(500).json({ message: "Internal Server Error" });
-//     }
-//   };
-//   const checkAuth = (req, res) => {
-//     try {
-//       res.status(200).json(req.user);
-//     } catch (error) {
-//       console.log("Error in checkAuth controller", error.message);
-//       res.status(500).json({ message: "Internal Server Error" });
-//     }
-//   };
-
-// module.exports = {
-//     register,
-//     login,
-   
-//     logout,
-//     checkAuth
-// };
-
 
 const bcrypt = require('bcryptjs');
 const Credential = require("../model/credential");
@@ -202,53 +9,6 @@ const dotenv = require("dotenv");  // CommonJS for dotenv
 
 // Load environment variables
 dotenv.config();
-// const { sendVerificationEmail } = require('../utils/emailService');
-// const { generateVerificationCode } = require('../Utils/emailVerification.js');
-
-// Register a new user
-// const register = async (req, res) => {
-//   const { fullName, email, password } = req.body;
-//   try {
-//     if (!fullName || !email || !password) {
-//       return res.status(400).json({ message: "All fields are required" });
-//     }
-
-//     if (password.length < 6) {
-//       return res.status(400).json({ message: "Password must be at least 6 characters" });
-//     }
-
-//     const user = await Credential.findOne({ email });
-
-//     if (user) return res.status(400).json({ message: "Email already exists" });
-
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(password, salt);
-
-//     const newUser = new Credential({
-//       fullName,
-//       email,
-//       password: hashedPassword,
-//     });
-
-//     if (newUser) {
-//       // generate jwt token here
-//       generateToken(newUser._id, res);
-//       await newUser.save();
-
-//       res.status(201).json({
-//         _id: newUser._id,
-//         fullName: newUser.fullName,
-//         email: newUser.email,
-//         profilePic: newUser.profilePic,
-//       });
-//     } else {
-//       res.status(400).json({ message: "Invalid user data" });
-//     }
-//   } catch (error) {
-//     console.log("Error in signup controller", error.message);
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
 const register = async (req, res) => {
   const { fullName, email, password, profilePic } = req.body;
 
@@ -313,46 +73,40 @@ const MAX_FAILED_ATTEMPTS = 10;          // max allowed failed attempts
 const LOCK_TIME = 15 * 60 * 1000;       // lock duration: 15 minutes (milliseconds)
 const loginStep1 = async (req, res) => {
   const { email, password } = req.body;
-
   try {
     const user = await Credential.findOne({ email });
-
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Check if account is locked
     if (user.lockUntil && user.lockUntil > Date.now()) {
       const remaining = Math.ceil((user.lockUntil - Date.now()) / 60000);
       return res.status(403).json({ message: `Account locked. Try again in ${remaining} minute(s)` });
     }
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
+    const isCorrect = await bcrypt.compare(password, user.password);
+    if (!isCorrect) {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-
       if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
         user.lockUntil = new Date(Date.now() + LOCK_TIME);
         await user.save();
         return res.status(403).json({ message: "Too many failed attempts. Account locked for 15 minutes." });
       }
-
       await user.save();
       return res.status(400).json({ message: "Wrong password" });
     }
 
-    // Password correct — reset lock
+    if (isPasswordExpired(user.passwordLastChanged)) {
+      return res.status(403).json({ message: "Password expired. Please reset your password." });
+    }
+
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
 
-    // Generate 6-digit MFA code
-    const code = (Math.floor(100000 + Math.random() * 900000)).toString();
-
-    // Hash the code before saving
+    const code = String(crypto.randomInt(100000, 1000000));
     user.mfaCode = await bcrypt.hash(code, 10);
-    user.mfaCodeExpires = Date.now() + 5 * 60 * 1000; // 5 mins expiry
+    user.mfaCodeExpires = Date.now() + 5 * 60 * 1000;
 
     await user.save();
 
-    // Send email with code
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -360,18 +114,16 @@ const loginStep1 = async (req, res) => {
       text: `Your verification code is: ${code}. It expires in 5 minutes.`,
     });
 
-    res.status(200).json({ mfaRequired: true, message: "Enter the verification code sent to your email." });
-  } catch (error) {
-    console.log("Error in loginStep1:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(200).json({ mfaRequired: true, message: "MFA code sent to your email" });
+  } catch (err) {
+    console.error("Login error:", err.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 const verifyMfaCode = async (req, res) => {
   const { email, code } = req.body;
-
   try {
     const user = await Credential.findOne({ email });
-
     if (!user) return res.status(400).json({ message: "User not found" });
 
     if (!user.mfaCode || !user.mfaCodeExpires || Date.now() > user.mfaCodeExpires) {
@@ -381,16 +133,14 @@ const verifyMfaCode = async (req, res) => {
     const isMatch = await bcrypt.compare(code, user.mfaCode);
     if (!isMatch) return res.status(400).json({ message: "Invalid verification code" });
 
-    // Clear MFA code and expiry
     user.mfaCode = null;
     user.mfaCodeExpires = null;
     await user.save();
 
-    // Generate JWT token
     const token = generateToken(user._id, res);
 
     res.status(200).json({
-      message: "Logged in successfully",
+      message: "Login successful",
       token,
       user: {
         _id: user._id,
@@ -399,11 +149,12 @@ const verifyMfaCode = async (req, res) => {
         profilePic: user.profilePic || "",
       },
     });
-  } catch (error) {
-    console.log("Error in verifyMfaCode:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+    console.error("MFA error:", err.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 // Logout route (Clear the cookie)
@@ -509,30 +260,18 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS, // Your email password
   },
 });
-
-// Forgot Password - Generates reset code and sends it via email
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
-
   try {
     const user = await Credential.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User with this email does not exist" });
 
-    if (!user) {
-      return res.status(400).json({ message: "User with this email does not exist" });
-    }
-
-    // Generate a 6-digit reset code
     const resetCode = String(crypto.randomInt(100000, 1000000));
-
-    // Hash the reset code before storing (better security)
-    const hashedResetCode = await bcrypt.hash(resetCode, 10);
-
-    // Store hashed reset code and expiration (valid for 15 minutes)
-    user.resetCode = hashedResetCode;
+    user.resetCode = await bcrypt.hash(resetCode, 10);
     user.resetCodeExpires = Date.now() + 15 * 60 * 1000;
+
     await user.save();
 
-    // Send reset code via email
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -541,46 +280,36 @@ const forgotPassword = async (req, res) => {
     });
 
     res.status(200).json({ message: "Reset code sent to your email" });
-
-  } catch (error) {
-    console.error("Error in forgotPassword:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+    console.error("Forgot password error:", err.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// Verify Reset Code Controller
 const verifyResetCode = async (req, res) => {
   const { email, resetCode } = req.body;
-
   try {
-    // Find user by email
     const user = await Credential.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
+    if (!user) return res.status(400).json({ message: "User not found" });
 
-    // Check if reset code is expired
     if (!user.resetCode || !user.resetCodeExpires || Date.now() > user.resetCodeExpires) {
       return res.status(400).json({ message: "Invalid or expired reset code" });
     }
 
-    // Compare the entered reset code with the hashed one in the database
     const isMatch = await bcrypt.compare(resetCode, user.resetCode);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid reset code" });
-    }
+    if (!isMatch) return res.status(400).json({ message: "Invalid reset code" });
 
-    // Nullify reset code and expiration after verification
     user.resetCode = null;
     user.resetCodeExpires = null;
     await user.save();
 
-    res.status(200).json({ message: "Reset code verified successfully. You can now reset your password." });
-  } catch (error) {
-    console.error("Error in verifyResetCode:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(200).json({ message: "Code verified. You may now reset your password." });
+  } catch (err) {
+    console.error("Verify reset code error:", err.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // Reset Password Controller
 const resetPassword = async (req, res) => {
