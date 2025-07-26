@@ -8,6 +8,7 @@ const AuthRouter = require('./routes/authRoute');
 const MessageRouter = require('./routes/messageRoute');
 const { app, server } =require( "./config/socket");
 const GroupRouter = require('./routes/groupRoute');
+const TipRouter = require('./routes/paymentRoute');
 const dotenv =require("dotenv");
 dotenv.config();
 app.use(cookieParser());
@@ -31,6 +32,7 @@ app.use('/api/user', CustomerRouter);
 app.use('/api/auth', AuthRouter);
 app.use('/api/messages', MessageRouter);
 app.use('/api/groups', GroupRouter);
+app.use('/api/payments', TipRouter);
 
 module.exports = app; 
 
