@@ -21,19 +21,29 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
     blockedUsers: [
-      { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: "creds" 
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "creds"
       }
     ],
     resetCode: {
-      type: String,  // The hashed reset code
+      type: String,
       default: null,
     },
     resetCodeExpires: {
-      type: Date,  // The expiration time of the reset code
+      type: Date,
       default: null,
     },
+
+    // 👇 Added for brute-force protection
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+    }
   },
   { timestamps: true }
 );
