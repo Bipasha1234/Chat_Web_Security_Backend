@@ -5,7 +5,9 @@ const generateToken = require("../config/utils");
 const cloudinary = require( "../config/cloudinary.js");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
-const dotenv = require("dotenv");  // CommonJS for dotenv
+const dotenv = require("dotenv");  
+const validator = require("validator");
+
 // const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
 const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
 const MAX_FAILED_ATTEMPTS = 10;
@@ -185,67 +187,83 @@ const logout = (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { email, fullName, profilePic } = req.body;
-    const userId = req.user._id; // Assuming the user ID is retrieved from authentication middleware
+    const userId = req.user._id; // From protectRoute middleware
 
-    // Initialize update fields object
     const updateFields = {};
 
-    // Check if profilePic is provided and upload it to Cloudinary
+    // Validate and sanitize email
+    if (email) {
+      if (!validator.isEmail(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if email is already used by another user
+      const existing = await Credential.findOne({ email });
+      if (existing && existing._id.toString() !== userId.toString()) {
+        return res.status(409).json({ message: "Email already in use" });
+      }
+
+      updateFields.email = validator.normalizeEmail(email);
+    }
+
+    // Validate full name
+    if (fullName) {
+      if (!validator.isLength(fullName, { min: 2, max: 50 })) {
+        return res.status(400).json({ message: "Full name must be between 2 and 50 characters" });
+      }
+      updateFields.fullName = validator.escape(fullName.trim());
+    }
+
+    // Validate and upload profile picture
     if (profilePic) {
+      // Basic type check (base64 image string)
+      if (!profilePic.startsWith("data:image/")) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
       try {
         const uploadResponse = await cloudinary.uploader.upload(profilePic, {
-          folder: "user_profile_pics", // Optional folder in Cloudinary
-          transformation: [{ width: 150, height: 150, crop: "fill" }], // Optional image transformation
+          folder: "user_profile_pics",
+          transformation: [{ width: 150, height: 150, crop: "fill" }],
+          allowed_formats: ["jpg", "jpeg", "png", "webp"],
+          public_id: `profile_${userId}`, 
         });
-        updateFields.profilePic = uploadResponse.secure_url; // Store the Cloudinary URL
+
+        updateFields.profilePic = uploadResponse.secure_url;
       } catch (cloudinaryError) {
-        return res.status(500).json({ message: "Error uploading profile picture", error: cloudinaryError.message });
+        return res.status(500).json({
+          message: "Error uploading profile picture",
+          error: cloudinaryError.message,
+        });
       }
     }
 
-    // Update fields if provided
-    if (email) {
-      updateFields.email = email;
-    }
-
-    if (fullName) {
-      updateFields.fullName = fullName;
-    }
-
-    // If no fields to update, return a message
+    // If no update fields, return early
     if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ message: "No fields to update" });
+      return res.status(400).json({ message: "No fields provided for update" });
     }
 
-    // Update the user profile with the fields that are provided
+    // Update user
     const updatedUser = await Credential.findByIdAndUpdate(
       userId,
       updateFields,
-      { new: true }
-    );
+      { new: true, runValidators: true }
+    ).select("-password -__v"); // Remove sensitive fields
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Return the updated user details as a response
     res.status(200).json(updatedUser);
+
   } catch (error) {
-    console.error("Error in updating profile:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
-
-
- const uploadImage =  (req, res) => {
-  if (!req.file) {
-    return res.status(400).send({ message: "Please upload a file" });
-  }
-  res.status(200).json({
-    success: true,
-    data: req.file.filename,
-  });
-}
 
 const checkAuth = (req, res) => {
   try {
@@ -358,7 +376,6 @@ module.exports = {
   logout,
   checkAuth,
   updateProfile,
-  uploadImage,
   getCurrentUser, 
   forgotPassword,
   resetPassword,
