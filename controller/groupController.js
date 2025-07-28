@@ -277,6 +277,19 @@ const addUserToGroup = async (req, res) => {
     group.members.push(userObjectId);
     await group.save();
 
+
+      // Log activity
+    await logActivity({
+      userId: loggedInUserId,
+      action: "add_user_to_group",
+      details: {
+        groupId,
+        addedUserId: userId,
+      },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(200).json({ message: "User added to group", group });
   } catch (error) {
     console.error(error);
@@ -304,6 +317,15 @@ const leaveGroup = async (req, res) => {
       // Save the group if there are still members
       await group.save();
     }
+
+
+    await logActivity({
+        userId,
+        action: "delete_group_no_members",
+        details: { groupId },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
 
     res.status(200).json({ message: "Successfully left the group" });
   } catch (error) {

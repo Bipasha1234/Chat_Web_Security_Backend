@@ -73,6 +73,16 @@ const register = async (req, res) => {
 
     await newUser.save();
 
+
+    await logActivity({
+  userId: newUser._id,
+  action: "register",
+  details: { email: newUser.email },
+  ip: req.ip,
+  userAgent: req.headers["user-agent"],
+});
+
+
     res.status(201).json({
       message: "User registered successfully",
       _id: newUser._id,
@@ -85,14 +95,33 @@ const register = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 const loginStep1 = async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await Credential.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    if (!user) {
+      // Log failed login - user not found
+      await logActivity({
+        userId: null,
+        action: "login_failed",
+        details: { email, reason: "User not found" },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     if (user.lockUntil && user.lockUntil > Date.now()) {
+      // Log account lock event
+      await logActivity({
+        userId: user._id,
+        action: "login_locked",
+        details: { email, lockExpires: user.lockUntil },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
       const remaining = Math.ceil((user.lockUntil - Date.now()) / 60000);
       return res.status(403).json({ message: `Account locked. Try again in ${remaining} minute(s)` });
     }
@@ -100,12 +129,34 @@ const loginStep1 = async (req, res) => {
     const isCorrect = await bcrypt.compare(password, user.password);
     if (!isCorrect) {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+
       if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
         user.lockUntil = new Date(Date.now() + LOCK_TIME);
         await user.save();
+
+        // Log account lock due to failed attempts
+        await logActivity({
+          userId: user._id,
+          action: "login_locked",
+          details: { email, lockExpires: user.lockUntil },
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+
         return res.status(403).json({ message: "Too many failed attempts. Account locked for 15 minutes." });
       }
+
       await user.save();
+
+      // Log failed login - wrong password
+      await logActivity({
+        userId: user._id,
+        action: "login_failed",
+        details: { email, reason: "Wrong password" },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
       return res.status(400).json({ message: "Wrong password" });
     }
 
@@ -122,6 +173,15 @@ const loginStep1 = async (req, res) => {
 
     await user.save();
 
+    // Log successful step 1 login
+    await logActivity({
+      userId: user._id,
+      action: "login_step1_success",
+      details: { email },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -135,6 +195,7 @@ const loginStep1 = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 const verifyMfaCode = async (req, res) => {
   const { email, code } = req.body;
   try {
