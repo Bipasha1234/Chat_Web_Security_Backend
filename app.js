@@ -1,6 +1,7 @@
 const express = require('express');
 const cookieParser =require( "cookie-parser");
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const connectDb = require('./config/db');
 const CustomerRouter = require('./routes/userRoute');
@@ -26,6 +27,16 @@ app.use(
     credentials: true,
   })
 );
+
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.',
+});
+app.use(limiter);
+
+
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 // Routes setup
 app.use('/api/user', CustomerRouter);
