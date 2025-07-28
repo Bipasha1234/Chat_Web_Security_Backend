@@ -6,6 +6,7 @@ const tipSchema = new mongoose.Schema({
   amount: Number,
    messageId: { type: mongoose.Schema.Types.ObjectId, ref: "messages" }, 
   date: { type: Date, default: Date.now },
+   transactionId: { type: String, required: true, unique: true },  // Add unique transactionId
 });
 
 module.exports = mongoose.model("tips", tipSchema);

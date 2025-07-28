@@ -46,7 +46,7 @@ router.post(
   }
 );
 
-// Save tip - protected and validated
+// Save tip - protected, validated, and prevents duplicate transactionId
 router.post(
   "/save-tip",
   protectRoute,
@@ -61,6 +61,10 @@ router.post(
       .optional()
       .isMongoId()
       .withMessage("Invalid message ID"),
+    body("transactionId")
+      .isString()
+      .notEmpty()
+      .withMessage("transactionId is required and must be a string"),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -68,15 +72,22 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { receiverId, amount, messageId } = req.body;
+    const { receiverId, amount, messageId, transactionId } = req.body;
     const tipperId = req.user._id.toString(); // always from token
 
     try {
+      // Check if this transactionId already exists to prevent replay
+      const existingTip = await Tip.findOne({ transactionId });
+      if (existingTip) {
+        return res.status(409).json({ error: "Duplicate tip detected" });
+      }
+
       const newTip = new Tip({
         tipperId,
         receiverId,
         amount,
         messageId,
+        transactionId,  // store transactionId here
       });
 
       await newTip.save();
@@ -103,7 +114,7 @@ router.get("/get-tip/:messageId", protectRoute, async (req, res) => {
     if (tip.tipperId.toString() !== userId && tip.receiverId.toString() !== userId) {
       return res.status(403).json({ message: "Unauthorized access" });
     }
-
+//avoid sensitive info exposure
     res.json(tip);
   } catch (error) {
     console.error("Error fetching tip:", error);
