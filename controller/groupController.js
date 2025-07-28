@@ -146,6 +146,13 @@ const createGroup = async (req, res) => {
     });
 
     await newGroup.save();
+     await logActivity({
+      userId: userId,
+      action: "create_group",
+      details: { groupId: newGroup._id, groupName: groupName },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
   
 
     res.status(201).json({ message: "Group created successfully", group: newGroup });
