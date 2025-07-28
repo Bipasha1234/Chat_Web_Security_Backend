@@ -124,6 +124,7 @@ const getMessages = async (req, res) => {
 
 
 const mongoose = require("mongoose");
+const logActivity = require("../config/logger.js");
 
 
 const sendMessage = async (req, res) => {
@@ -215,6 +216,23 @@ if (
 
     await newMessage.save();
     console.log("Message sent:", newMessage);
+
+
+     // Log activity here
+    await logActivity({
+      userId: senderId,
+      action: "send_message",
+      details: {
+        receiverId,
+        messageId: newMessage._id,
+        hasText: Boolean(text),
+        hasImage: Boolean(image),
+        hasAudio: Boolean(audio),
+        hasDocument: Boolean(document),
+      },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
 
     //  Emit via WebSocket (if user is online)
     const receiverSocketId = getReceiverSocketId(receiverId);
