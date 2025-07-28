@@ -13,7 +13,6 @@ router.post("/register",register)
 router.post("/logout",logout)
 router.get("/check",protectRoute,checkAuth)
 router.put("/update-profile", protectRoute,updateProfile);
-router.put("/update-profile-app", protectRoute,upload,updateProfileApp);
 router.post("/uploadImage", upload, uploadImage);
 router.get("/get-user",protectRoute,getCurrentUser);
 router.post("/forgot-password",forgotPassword);

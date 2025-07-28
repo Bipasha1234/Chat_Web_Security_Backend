@@ -270,8 +270,8 @@ const getCurrentUser = async (req, res) => {
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER, // Your email
-    pass: process.env.EMAIL_PASS, // Your email password
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS, 
   },
 });
 const forgotPassword = async (req, res) => {
@@ -352,61 +352,6 @@ const resetPassword = async (req, res) => {
   }
 };
 
-
-
-const updateProfileApp = async (req, res) => {
-  try {
-    const { email, fullName } = req.body;
-    const userId = req.user._id; // Get user ID from authentication middleware
-
-    // Initialize update fields object
-    const updateFields = {};
-
-    // Check if a profile picture is uploaded and store the filename
-    if (req.file) {
-      updateFields.profilePic = req.file.filename; // Save only the filename, not the full path
-    }
-
-    // Check if email is provided
-    if (email) {
-      updateFields.email = email;
-    }
-
-    // Check if fullName is provided
-    if (fullName) {
-      updateFields.fullName = fullName;
-    }
-
-    // If no fields to update, return an error message
-    if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ message: "No fields to update" });
-    }
-
-    // Update the user profile in the database
-    const updatedUser = await Credential.findByIdAndUpdate(
-      userId,
-      updateFields,
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Return the updated user details
-    res.status(200).json({
-      message: "Profile updated successfully",
-      user: updatedUser,
-    });
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
-  }
-};
-
-
-
-// Add getCurrentUser to the exported functions
 module.exports = {
   register,
   loginStep1,
@@ -418,6 +363,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   verifyResetCode,
-  updateProfileApp,
   verifyMfaCode
 };
