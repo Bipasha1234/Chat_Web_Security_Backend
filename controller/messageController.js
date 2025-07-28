@@ -142,6 +142,17 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ error: "Invalid message text." });
     }
 
+
+    // Reject empty message (no text, no image, no audio, no document)
+if (
+  (!text || text.trim() === "") &&
+  !image &&
+  !audio &&
+  !document
+) {
+  return res.status(400).json({ error: "Cannot send empty message." });
+}
+
     //  Check if receiver exists and has blocked the sender
     const receiver = await User1.findById(receiverId);
     if (!receiver) {
@@ -256,22 +267,34 @@ const deleteChat = async (req, res) => {
   }
 };
 
-
-
-
-
 const blockUser = async (req, res) => {
   try {
     const { id: userId } = req.params;
     const loggedInUserId = req.user._id;
 
-    await User1.findByIdAndUpdate(
+    // Validate userId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Prevent blocking self
+    if (userId === loggedInUserId.toString()) {
+      return res.status(400).json({ message: "You cannot block yourself" });
+    }
+
+    // Check if target user exists
+    const targetUser = await User1.findById(userId).select("_id");
+    if (!targetUser) {
+      return res.status(404).json({ message: "User to block not found" });
+    }
+
+    // Add to blockedUsers set, avoid duplicates
+    const updatedUser = await User1.findByIdAndUpdate(
       loggedInUserId,
       { $addToSet: { blockedUsers: userId } },
       { new: true }
-    );
+    ).populate("blockedUsers", "fullName _id profilePic");
 
-    const updatedUser = await User1.findById(loggedInUserId).populate("blockedUsers", "fullName _id");
     res.status(200).json({ blockedUsers: updatedUser.blockedUsers });
   } catch (error) {
     console.error("Error blocking user:", error);
@@ -281,31 +304,45 @@ const blockUser = async (req, res) => {
 
 const unblockUser = async (req, res) => {
   try {
-    const { id: userId } = req.params; 
+    const { id: userId } = req.params;
     const loggedInUserId = req.user._id;
 
-    await User1.findByIdAndUpdate(
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    if (userId === loggedInUserId.toString()) {
+      return res.status(400).json({ message: "You cannot unblock yourself" });
+    }
+
+    const targetUser = await User1.findById(userId).select("_id fullName profilePic");
+    if (!targetUser) {
+      return res.status(404).json({ message: "User to unblock not found" });
+    }
+
+    // Remove from blockedUsers array
+    const updatedUser = await User1.findByIdAndUpdate(
       loggedInUserId,
-      { $pull: { blockedUsers: userId } }, 
+      { $pull: { blockedUsers: userId } },
       { new: true }
-    );
+    ).populate("blockedUsers", "fullName _id profilePic");
 
-    const updatedUser = await User1.findById(loggedInUserId).populate("blockedUsers", "fullName _id profilePic");
-    const unblockedUser = await User1.findById(userId).select("fullName _id profilePic");
-
-    return res.status(200).json({
-      blockedUsers: updatedUser.blockedUsers, 
-      unblockedUser, 
+    res.status(200).json({
+      blockedUsers: updatedUser.blockedUsers,
+      unblockedUser: targetUser,
     });
   } catch (error) {
     console.error("Error unblocking user:", error);
-    return res.status(500).json({ message: "Failed to unblock user" });
+    res.status(500).json({ message: "Failed to unblock user" });
   }
 };
 
 const getBlockedUsers = async (req, res) => {
   try {
-    const loggedInUser = await User1.findById(req.user._id).populate("blockedUsers", "fullName _id");
+    const loggedInUser = await User1.findById(req.user._id).populate("blockedUsers", "fullName _id profilePic");
+    if (!loggedInUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
     res.status(200).json({ blockedUsers: loggedInUser.blockedUsers });
   } catch (error) {
     console.error("Error fetching blocked users:", error);

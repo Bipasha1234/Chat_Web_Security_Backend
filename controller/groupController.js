@@ -3,62 +3,108 @@ const User = require("../model/credential");
 const cloudinary = require("../config/cloudinary");  
 const mongoose = require("mongoose");
 
+
 const sendGroupMessage = async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { text, image, audio, document,documentName } = req.body;
+    const { text, image, audio, document, documentName } = req.body;
     const senderId = req.user._id;
 
+    // Validate ObjectIds
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ error: "Invalid group ID" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(senderId)) {
+      return res.status(400).json({ error: "Invalid sender ID" });
+    }
+
+    // Check for empty message (no text, no files)
+    if (
+      (!text || text.trim() === "") &&
+      !image &&
+      !audio &&
+      !document
+    ) {
+      return res.status(400).json({ error: "Cannot send empty message" });
+    }
+
+    // Validate text length and type
+    if (text && (typeof text !== "string" || text.length > 1000)) {
+      return res.status(400).json({ error: "Invalid message text" });
+    }
+
+  
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
-if (!group.members.includes(senderId)) {
-  return res.status(403).json({ error: "You are not a member of this group" });
-}
 
-   let imageUrl = "", audioUrl = "", documentUrl = "";
-       if (image && typeof image === "string" && image.startsWith("data:image/")) {
-         const uploadResponse = await cloudinary.uploader.upload(image, { resource_type: "image" });
-         imageUrl = uploadResponse.secure_url;
-       }
-   
-       if (audio && typeof audio === "string" && audio.startsWith("data:audio/")) {
-         const uploadResponse = await cloudinary.uploader.upload(audio, { resource_type: "auto" });
-         audioUrl = uploadResponse.secure_url;
-       }
-   
-       if (document && typeof document === "string") {
-         const uploadResponse = await cloudinary.uploader.upload(document, {
-           resource_type: "raw",
-           public_id: `documents/${Date.now()}-${documentName.split(".")[0]}`,
-           use_filename: true,
-           unique_filename: false,
-         });
-         documentUrl = uploadResponse.secure_url;
-       }
+    if (!group.members.some(memberId => memberId.toString() === senderId.toString())) {
+      return res.status(403).json({ error: "You are not a member of this group" });
+    }
+
+    // File uploads validation & processing
+    let imageUrl = "", audioUrl = "", documentUrl = "";
+
+    if (image && typeof image === "string") {
+      if (!image.startsWith("data:image/")) {
+        return res.status(400).json({ error: "Invalid image format" });
+      }
+      const uploadResponse = await cloudinary.uploader.upload(image, { resource_type: "image" });
+      imageUrl = uploadResponse.secure_url;
+    }
+
+    if (audio && typeof audio === "string") {
+      if (!audio.startsWith("data:audio/")) {
+        return res.status(400).json({ error: "Invalid audio format" });
+      }
+      const uploadResponse = await cloudinary.uploader.upload(audio, { resource_type: "auto" });
+      audioUrl = uploadResponse.secure_url;
+    }
+
+    if (document && typeof document === "string") {
+      if (!document.startsWith("data:application/") && !document.startsWith("data:text/")) {
+        return res.status(400).json({ error: "Invalid document format" });
+      }
+      // Validate documentName safely
+      let safeDocName = "file";
+      if (documentName && typeof documentName === "string") {
+        safeDocName = documentName.split(".")[0] || "file";
+      }
+      const uploadResponse = await cloudinary.uploader.upload(document, {
+        resource_type: "raw",
+        public_id: `documents/${Date.now()}-${safeDocName}`,
+        use_filename: true,
+        unique_filename: false,
+      });
+      documentUrl = uploadResponse.secure_url;
+    }
+
+    // Create message object
     const newMessage = {
       senderId,
-      text,
-      image: imageUrl,
-      audio: audioUrl,
-      document: documentUrl,
+      text: text || null,
+      image: imageUrl || null,
+      audio: audioUrl || null,
+      document: documentUrl || null,
       documentName: documentName || null,
-      createdAt: new Date(), 
+      createdAt: new Date(),
     };
 
+    // Push and save
     group.messages.push(newMessage);
     await group.save();
+
+    // Populate sender details for response
     await group.populate('messages.senderId', 'fullName profilePic');
 
     res.status(201).json({
       message: "Message sent",
-      newMessage: group.messages[group.messages.length - 1], 
+      newMessage: group.messages[group.messages.length - 1],
     });
   } catch (error) {
-    console.error(error);
+    console.error("sendGroupMessage error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 
 const createGroup = async (req, res) => {
@@ -162,9 +208,6 @@ const getGroupMessages = async (req, res) => {
       .select("messages profilePic name");
 
     if (!group) return res.status(404).json({ error: "Group not found" });
-if (!group.members.includes(req.user._id)) {
-  return res.status(403).json({ error: "Access denied. Not a group member." });
-}
 
 
     res.status(200).json({
