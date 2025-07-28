@@ -36,6 +36,8 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+const helmet = require('helmet');
+app.use(helmet());
 
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 // Routes setup
