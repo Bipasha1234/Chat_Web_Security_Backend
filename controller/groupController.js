@@ -1,9 +1,7 @@
 const Group = require("../model/group");
 const User = require("../model/credential");
-const Message=require("../model/message.js")
 const cloudinary = require("../config/cloudinary");  
 const mongoose = require("mongoose");
-const { getReceiverSocketId, io } = require("../config/socket.js");
 
 const sendGroupMessage = async (req, res) => {
   try {
@@ -13,6 +11,9 @@ const sendGroupMessage = async (req, res) => {
 
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
+if (!group.members.includes(senderId)) {
+  return res.status(403).json({ error: "You are not a member of this group" });
+}
 
    let imageUrl = "", audioUrl = "", documentUrl = "";
        if (image && typeof image === "string" && image.startsWith("data:image/")) {
@@ -62,7 +63,7 @@ const sendGroupMessage = async (req, res) => {
 
 const createGroup = async (req, res) => {
   try {
-    console.log("➡️ Create Group Request:", req.body);
+   
 
     const { groupName, members, profilePic } = req.body;
     const userId = req.user?._id;
@@ -81,11 +82,11 @@ const createGroup = async (req, res) => {
     });
 
     await newGroup.save();
-    console.log("✅ Group created successfully:", newGroup);
+  
 
     res.status(201).json({ message: "Group created successfully", group: newGroup });
   } catch (error) {
-    console.error("❌ Error creating group:", error);
+    console.error(" Error creating group:", error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
@@ -161,8 +162,10 @@ const getGroupMessages = async (req, res) => {
       .select("messages profilePic name");
 
     if (!group) return res.status(404).json({ error: "Group not found" });
+if (!group.members.includes(req.user._id)) {
+  return res.status(403).json({ error: "Access denied. Not a group member." });
+}
 
-    console.log("Populated messages:", group.messages); 
 
     res.status(200).json({
       messages: group.messages,
@@ -192,8 +195,7 @@ const addUserToGroup = async (req, res) => {
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
-    console.log("Group Members:", group.members.map(m => m.toString()));
-
+ 
     // Check if user exists in the user database
     const user = await User.findById(userObjectId);
     if (!user) return res.status(404).json({ error: "User not found" });
