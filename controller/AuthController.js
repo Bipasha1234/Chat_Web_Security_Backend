@@ -67,6 +67,7 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       profilePic: profilePic || "",
+       role: 'user',
       // Optionally, add password history and last changed date here
       // passwordHistory: [hashedPassword],
       // passwordLastChangedAt: new Date(),

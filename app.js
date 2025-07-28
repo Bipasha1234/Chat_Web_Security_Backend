@@ -2,15 +2,15 @@ const express = require('express');
 const cookieParser =require( "cookie-parser");
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 const connectDb = require('./config/db');
-const CustomerRouter = require('./routes/userRoute');
 const AuthRouter = require('./routes/authRoute');
 const MessageRouter = require('./routes/messageRoute');
 const { app, server } =require( "./config/socket");
 const GroupRouter = require('./routes/groupRoute');
 const TipRouter = require('./routes/paymentRoute');
 const dotenv =require("dotenv");
+
+
 dotenv.config();
 app.use(cookieParser());
 connectDb();
@@ -43,9 +43,9 @@ app.use(limiter);
 const helmet = require('helmet');
 app.use(helmet());
 
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+
 // Routes setup
-app.use('/api/user', CustomerRouter);
 app.use('/api/auth', AuthRouter);
 app.use('/api/messages', MessageRouter);
 app.use('/api/groups', GroupRouter);
