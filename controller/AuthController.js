@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");  
 const validator = require("validator");
+const logActivity = require('../config/logger.js');
 
 // const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
 const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
@@ -72,7 +73,6 @@ const register = async (req, res) => {
     });
 
     await newUser.save();
-
 
     await logActivity({
   userId: newUser._id,
@@ -235,8 +235,15 @@ const verifyMfaCode = async (req, res) => {
 
 
 // Logout route (Clear the cookie)
-const logout = (req, res) => {
+const logout = async (req, res) => {
   try {
+    await logActivity({
+      userId: req.user._id,
+      action: "logout",
+      details: {},
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
     res.cookie("jwt", "", { maxAge: 0 });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
@@ -244,6 +251,7 @@ const logout = (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 const updateProfile = async (req, res) => {
   try {
@@ -316,6 +324,16 @@ const updateProfile = async (req, res) => {
     }
 
     res.status(200).json(updatedUser);
+
+
+    await logActivity({
+  userId: userId,
+  action: "update_profile",
+  details: { updatedFields: Object.keys(updateFields) },
+  ip: req.ip,
+  userAgent: req.headers["user-agent"],
+});
+
 
   } catch (error) {
     console.error("Error updating profile:", error);
@@ -423,6 +441,15 @@ const resetPassword = async (req, res) => {
     user.passwordLastChanged = new Date();
 
     await user.save();
+
+    await logActivity({
+  userId: user._id,
+  action: "reset_password",
+  details: { email },
+  ip: req.ip,
+  userAgent: req.headers["user-agent"],
+});
+
 
     res.status(200).json({ message: "Password reset successfully" });
   } catch (err) {
