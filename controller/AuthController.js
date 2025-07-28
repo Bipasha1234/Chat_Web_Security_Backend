@@ -68,9 +68,7 @@ const register = async (req, res) => {
       password: hashedPassword,
       profilePic: profilePic || "",
        role: 'user',
-      // Optionally, add password history and last changed date here
-      // passwordHistory: [hashedPassword],
-      // passwordLastChangedAt: new Date(),
+     
     });
 
     await newUser.save();
@@ -163,6 +161,7 @@ const verifyMfaCode = async (req, res) => {
         _id: user._id,
         fullName: user.fullName,
         email: user.email,
+        role: user.role,
         profilePic: user.profilePic || "",
       },
     });
