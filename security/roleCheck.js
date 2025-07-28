@@ -1,4 +1,3 @@
-
 const checkRole = (requiredRole) => {
   return (req, res, next) => {
     if (!req.user || req.user.role !== requiredRole) {
@@ -8,4 +7,4 @@ const checkRole = (requiredRole) => {
   };
 };
 
-export default checkRole;
+module.exports = checkRole;

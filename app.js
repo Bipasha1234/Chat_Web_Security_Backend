@@ -8,6 +8,7 @@ const MessageRouter = require('./routes/messageRoute');
 const { app, server } =require( "./config/socket");
 const GroupRouter = require('./routes/groupRoute');
 const TipRouter = require('./routes/paymentRoute');
+const AdminRouter = require('./routes/adminRoute');
 const dotenv =require("dotenv");
 
 
@@ -50,6 +51,7 @@ app.use('/api/auth', AuthRouter);
 app.use('/api/messages', MessageRouter);
 app.use('/api/groups', GroupRouter);
 app.use('/api/payments', TipRouter);
+app.use('/api', AdminRouter);
 
 module.exports = app; 
 

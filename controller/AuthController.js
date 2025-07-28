@@ -1,7 +1,7 @@
 
 const bcrypt = require('bcryptjs');
 const Credential = require("../model/credential");
-const generateToken = require("../config/utils");
+const generateToken = require("../config/utils.js");
 const cloudinary = require( "../config/cloudinary.js");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
