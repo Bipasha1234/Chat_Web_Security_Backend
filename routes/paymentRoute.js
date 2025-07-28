@@ -5,7 +5,8 @@ const Tip = require("../model/payment");
 const { body, validationResult } = require("express-validator");
 
 const protectRoute = require("../security/Auth");
-const { encrypt } = require("../middleware/encryption");
+const { encrypt,decrypt } = require("../middleware/encryption");
+
 
 // Create payment intent - protected and validated
 router.post(
@@ -92,6 +93,7 @@ router.post(
       });
 
       await newTip.save();
+      console.log(`[Tip] User ${req.user._id.toString().slice(-4)} tipped receiver ${receiverId.toString().slice(-4)} amount: [HIDDEN]`);
 
       res.status(201).json({ message: "Tip saved successfully", tip: newTip });
     } catch (error) {
@@ -115,8 +117,20 @@ router.get("/get-tip/:messageId", protectRoute, async (req, res) => {
     if (tip.tipperId.toString() !== userId && tip.receiverId.toString() !== userId) {
       return res.status(403).json({ message: "Unauthorized access" });
     }
-//avoid sensitive info exposure
-    res.json(tip);
+
+    // Decrypt amount (assuming amount is encrypted as string)
+    let decryptedAmount = tip.amount;
+    if (typeof tip.amount === "string") {
+      decryptedAmount = parseFloat(decrypt(tip.amount));
+    }
+
+    // Prepare response without exposing sensitive fields (e.g., maybe omit transactionId if needed)
+    const responseTip = {
+      ...tip.toObject(),   // convert mongoose document to plain object
+      amount: decryptedAmount,
+    };
+
+    res.json(responseTip);
   } catch (error) {
     console.error("Error fetching tip:", error);
     res.status(500).json({ error: "Failed to fetch tip" });
