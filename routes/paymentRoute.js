@@ -5,6 +5,7 @@ const Tip = require("../model/payment");
 const { body, validationResult } = require("express-validator");
 
 const protectRoute = require("../security/Auth");
+const { encrypt } = require("../middleware/encryption");
 
 // Create payment intent - protected and validated
 router.post(
@@ -85,9 +86,9 @@ router.post(
       const newTip = new Tip({
         tipperId,
         receiverId,
-        amount,
+          amount: encrypt(amount), 
         messageId,
-        transactionId,  // store transactionId here
+        transactionId, 
       });
 
       await newTip.save();
