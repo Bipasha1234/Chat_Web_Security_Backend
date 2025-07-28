@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Tip = require("../model/payment"); 
+
+const protectRoute = require("../security/Auth");
 router.post("/create-payment-intent", async (req, res) => {
   const { amount, tipperId, receiverId } = req.body;
 
@@ -23,15 +25,19 @@ router.post("/create-payment-intent", async (req, res) => {
 });
 
 
-router.post("/save-tip", async (req, res) => {
-  const { tipperId, receiverId, amount, messageId } = req.body;
+
+
+router.post("/save-tip", protectRoute, async (req, res) => {
+  const { receiverId, amount, messageId } = req.body;
+
+  const tipperId = req.user._id;  //  Get from token, not frontend
 
   try {
     const newTip = new Tip({
       tipperId,
       receiverId,
       amount,
-      messageId,  // Link tip to the message here
+      messageId,
     });
 
     await newTip.save();
@@ -42,14 +48,19 @@ router.post("/save-tip", async (req, res) => {
     res.status(500).json({ error: "Failed to save tip" });
   }
 });
-router.get("/get-tip/:messageId", async (req, res) => {
+
+router.get("/get-tip/:messageId", protectRoute, async (req, res) => {
   const { messageId } = req.params;
 
   try {
     const tip = await Tip.findOne({ messageId });
 
-    if (!tip) {
-      return res.status(404).json({ message: "No tip found for this message" });
+    if (!tip) return res.status(404).json({ message: "No tip found" });
+
+    const userId = req.user._id.toString();
+
+    if (tip.tipperId.toString() !== userId && tip.receiverId.toString() !== userId) {
+      return res.status(403).json({ message: "Unauthorized access" });
     }
 
     res.json(tip);
