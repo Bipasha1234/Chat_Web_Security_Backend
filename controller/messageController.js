@@ -1,5 +1,9 @@
 const User1 = require("../model/credential.js");
 const Message = require("../model/message.js");
+
+const mongoose = require("mongoose");
+const logActivity = require("../config/logger.js");
+
 const cloudinary = require("../config/cloudinary.js");
 const { getReceiverSocketId, io } = require("../config/socket.js");
 
@@ -121,10 +125,6 @@ const getMessages = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
-const mongoose = require("mongoose");
-const logActivity = require("../config/logger.js");
 
 
 const sendMessage = async (req, res) => {
@@ -278,6 +278,15 @@ const deleteChat = async (req, res) => {
       { $addToSet: { deletedBy: loggedInUserId } } //  Track deleted messages
     );
 
+     // Log delete chat activity
+    await logActivity({
+      userId: loggedInUserId,
+      action: "delete_chat",
+      details: { chatWithUserId: userToDelete },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(200).json({ message: "Chat deleted successfully" });
   } catch (error) {
     console.error("Error in deleteChat:", error.message);
@@ -313,6 +322,16 @@ const blockUser = async (req, res) => {
       { new: true }
     ).populate("blockedUsers", "fullName _id profilePic");
 
+
+     // Log blocking activity
+    await logActivity({
+      userId: loggedInUserId,
+      action: "block_user",
+      details: { blockedUserId: userId },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(200).json({ blockedUsers: updatedUser.blockedUsers });
   } catch (error) {
     console.error("Error blocking user:", error);
@@ -344,6 +363,15 @@ const unblockUser = async (req, res) => {
       { $pull: { blockedUsers: userId } },
       { new: true }
     ).populate("blockedUsers", "fullName _id profilePic");
+
+    await logActivity({
+  userId: loggedInUserId,
+  action: "unblock_user",
+  details: { unblockedUserId: userId },
+  ip: req.ip,
+  userAgent: req.headers["user-agent"],
+});
+
 
     res.status(200).json({
       blockedUsers: updatedUser.blockedUsers,

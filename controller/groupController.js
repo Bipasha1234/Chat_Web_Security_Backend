@@ -2,6 +2,7 @@ const Group = require("../model/group");
 const User = require("../model/credential");
 const cloudinary = require("../config/cloudinary");  
 const mongoose = require("mongoose");
+const logActivity = require("../config/logger.js");
 
 
 const sendGroupMessage = async (req, res) => {
@@ -95,6 +96,23 @@ const sendGroupMessage = async (req, res) => {
 
     // Populate sender details for response
     await group.populate('messages.senderId', 'fullName profilePic');
+
+
+    await logActivity({
+      userId: senderId,
+      action: "send_group_message",
+      details: {
+        groupId,
+        message: {
+          hasText: Boolean(text),
+          hasImage: Boolean(image),
+          hasAudio: Boolean(audio),
+          hasDocument: Boolean(document),
+        },
+      },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
 
     res.status(201).json({
       message: "Message sent",
