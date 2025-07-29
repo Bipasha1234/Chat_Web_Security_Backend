@@ -10,7 +10,7 @@ const GroupRouter = require('./routes/groupRoute');
 const TipRouter = require('./routes/paymentRoute');
 const AdminRouter = require('./routes/adminRoute');
 const dotenv =require("dotenv");
-
+const helmet = require('helmet');
 
 dotenv.config();
 app.use(cookieParser());
@@ -24,7 +24,7 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://localhost:3000",
     credentials: true,
   })
 );
