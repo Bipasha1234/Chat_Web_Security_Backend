@@ -1,6 +1,6 @@
 const User1 = require("../model/credential.js");
 const Message = require("../model/message.js");
-
+const { encrypt, decrypt } = require('../config/crypto.js'); // adjust path
 const mongoose = require("mongoose");
 const logActivity = require("../config/logger.js");
 
@@ -112,14 +112,32 @@ const getMessages = async (req, res) => {
     const loggedInUserId = req.user._id; 
 
     const messages = await Message.find({
-      $or: [
-        { senderId: loggedInUserId, receiverId: chatPartnerId },
-        { senderId: chatPartnerId, receiverId: loggedInUserId }
-      ],
-      deletedBy: { $ne: loggedInUserId } //  Exclude messages deleted by this user
-    }).sort({ createdAt: 1 });
+  $or: [
+    { senderId: loggedInUserId, receiverId: chatPartnerId },
+    { senderId: chatPartnerId, receiverId: loggedInUserId }
+  ],
+  deletedBy: { $ne: loggedInUserId }
+}).sort({ createdAt: 1 });
 
-    res.status(200).json(messages || []);
+// Decrypt each message text before sending response
+const decryptedMessages = messages.map(msg => {
+  let decryptedText = null;
+  if (msg.text) {
+    try {
+      decryptedText = decrypt(msg.text);
+    } catch (err) {
+      console.error('Failed to decrypt message:', err);
+      decryptedText = "[Decryption error]";
+    }
+  }
+  return {
+    ...msg.toObject(),
+    text: decryptedText
+  };
+});
+
+res.status(200).json(decryptedMessages);
+
   } catch (error) {
     console.error("Error in getMessages:", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -203,18 +221,25 @@ if (
       documentUrl = uploadResponse.secure_url;
     }
 
-    //  Save the message
-    const newMessage = new Message({
-      senderId,
-      receiverId,
-      text,
-      image: imageUrl || null,
-      audio: audioUrl || null,
-      document: documentUrl || null,
-      documentName: documentName || null,
-    });
+    
 
-    await newMessage.save();
+// Inside sendMessage controller:
+let encryptedText = null;
+if (text) {
+  encryptedText = encrypt(text);
+}
+
+// Then save encryptedText instead of plain text
+const newMessage = new Message({
+  senderId,
+  receiverId,
+  text: encryptedText,
+  image: imageUrl || null,
+  audio: audioUrl || null,
+  document: documentUrl || null,
+  documentName: documentName || null,
+});
+await newMessage.save();
     console.log("Message sent:", newMessage);
 
 
