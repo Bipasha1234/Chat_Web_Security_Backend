@@ -8,6 +8,7 @@ const csrf = require("csurf");
 const dotenv = require("dotenv");
 const helmet = require("helmet");
 const connectDb = require("./config/db");
+const mongoSanitize = require("express-mongo-sanitize");
 const { initSocket } = require("./config/socket");
 
 const AuthRouter = require("./routes/authRoute");
@@ -51,6 +52,10 @@ app.use(csrfProtection);
 app.get("/api/csrf-token", (req, res) => {
   res.status(200).json({ csrfToken: req.csrfToken() });
 });
+// Middleware to sanitize data
+app.use(mongoSanitize());
+
+
 
 // API routes
 app.use("/api/auth", AuthRouter);

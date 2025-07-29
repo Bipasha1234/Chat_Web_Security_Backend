@@ -8,7 +8,7 @@ const logActivity = require("../config/logger.js");
 const sendGroupMessage = async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { text, image, audio, document, documentName } = req.body;
+    const { text } = req.body;
     const senderId = req.user._id;
 
     // Validate ObjectIds
@@ -19,22 +19,16 @@ const sendGroupMessage = async (req, res) => {
       return res.status(400).json({ error: "Invalid sender ID" });
     }
 
-    // Check for empty message (no text, no files)
-    if (
-      (!text || text.trim() === "") &&
-      !image &&
-      !audio &&
-      !document
-    ) {
+    // Check for empty message (no text)
+    if (!text || text.trim() === "") {
       return res.status(400).json({ error: "Cannot send empty message" });
     }
 
     // Validate text length and type
-    if (text && (typeof text !== "string" || text.length > 1000)) {
+    if (typeof text !== "string" || text.length > 1000) {
       return res.status(400).json({ error: "Invalid message text" });
     }
 
-  
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
@@ -42,51 +36,10 @@ const sendGroupMessage = async (req, res) => {
       return res.status(403).json({ error: "You are not a member of this group" });
     }
 
-    // File uploads validation & processing
-    let imageUrl = "", audioUrl = "", documentUrl = "";
-
-    if (image && typeof image === "string") {
-      if (!image.startsWith("data:image/")) {
-        return res.status(400).json({ error: "Invalid image format" });
-      }
-      const uploadResponse = await cloudinary.uploader.upload(image, { resource_type: "image" });
-      imageUrl = uploadResponse.secure_url;
-    }
-
-    if (audio && typeof audio === "string") {
-      if (!audio.startsWith("data:audio/")) {
-        return res.status(400).json({ error: "Invalid audio format" });
-      }
-      const uploadResponse = await cloudinary.uploader.upload(audio, { resource_type: "auto" });
-      audioUrl = uploadResponse.secure_url;
-    }
-
-    if (document && typeof document === "string") {
-      if (!document.startsWith("data:application/") && !document.startsWith("data:text/")) {
-        return res.status(400).json({ error: "Invalid document format" });
-      }
-      // Validate documentName safely
-      let safeDocName = "file";
-      if (documentName && typeof documentName === "string") {
-        safeDocName = documentName.split(".")[0] || "file";
-      }
-      const uploadResponse = await cloudinary.uploader.upload(document, {
-        resource_type: "raw",
-        public_id: `documents/${Date.now()}-${safeDocName}`,
-        use_filename: true,
-        unique_filename: false,
-      });
-      documentUrl = uploadResponse.secure_url;
-    }
-
-    // Create message object
+    // Create message object 
     const newMessage = {
       senderId,
-      text: text || null,
-      image: imageUrl || null,
-      audio: audioUrl || null,
-      document: documentUrl || null,
-      documentName: documentName || null,
+      text: text.trim(),
       createdAt: new Date(),
     };
 
@@ -97,17 +50,13 @@ const sendGroupMessage = async (req, res) => {
     // Populate sender details for response
     await group.populate('messages.senderId', 'fullName profilePic');
 
-
     await logActivity({
       userId: senderId,
       action: "send_group_message",
       details: {
         groupId,
         message: {
-          hasText: Boolean(text),
-          hasImage: Boolean(image),
-          hasAudio: Boolean(audio),
-          hasDocument: Boolean(document),
+          hasText: true,
         },
       },
       ip: req.ip,
@@ -123,6 +72,7 @@ const sendGroupMessage = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 
 const createGroup = async (req, res) => {
@@ -163,7 +113,6 @@ const createGroup = async (req, res) => {
 };
 
 
-
 const getGroups = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -175,42 +124,23 @@ const getGroups = async (req, res) => {
         path: "messages.senderId",
         select: "fullName profilePic",
       })
-      .select("name profilePic messages members createdAt") // Make sure to include 'createdAt'
+      .select("name profilePic messages members createdAt")
       .lean();
 
-    // Extract latest message and check type
+    // Extract latest message text only
     const formattedGroups = groups.map((group) => {
       const latestMessage = group.messages.length > 0 ? group.messages[group.messages.length - 1] : null;
-
-      let latestMessageText = null;
-      let messageType = "text";
-
-      if (latestMessage) {
-        if (latestMessage.text) {
-          latestMessageText = latestMessage.text;
-          messageType = "text";
-        } else if (latestMessage.image) {
-          latestMessageText = "📷 Photo";
-          messageType = "image";
-        } else if (latestMessage.audio) {
-          latestMessageText = "🎵 Audio";
-          messageType = "audio";
-        } else if (latestMessage.document) {
-          latestMessageText = "📄 Document";
-          messageType = "document";
-        }
-      }
 
       return {
         ...group,
         latestMessage: latestMessage
           ? {
-              text: latestMessageText,
-              type: messageType,
+              text: latestMessage.text || null,
+              type: "text",
               sender: latestMessage.senderId.fullName,
             }
           : null,
-        groupCreatedAt: group.createdAt, // Add group creation timestamp here
+        groupCreatedAt: group.createdAt,
       };
     });
 

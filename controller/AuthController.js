@@ -31,6 +31,7 @@ const isPasswordReused = async (newPassword, history) => {
 // Load environment variables
 dotenv.config();
 const register = async (req, res) => {
+   console.log("Incoming cookies:", req.cookies);
   const { fullName, email, password, profilePic } = req.body;
 
   try {
