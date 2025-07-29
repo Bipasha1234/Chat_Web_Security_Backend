@@ -6,8 +6,8 @@ const express = require("express");
 const app = express();
 
 const httpsOptions = {
-  key: fs.readFileSync('server.key'),
-  cert: fs.readFileSync('server.cert'),
+  key: fs.readFileSync('D:/chat_app_website_backend_security/ssl/server.key', 'utf8'),
+  cert: fs.readFileSync('D:/chat_app_website_backend_security/ssl/server.cert', 'utf8'),
 };
 
 const server = https.createServer(httpsOptions, app);
