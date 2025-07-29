@@ -252,11 +252,10 @@ const logout = async (req, res) => {
   }
 };
 
-
 const updateProfile = async (req, res) => {
   try {
     const { email, fullName, profilePic } = req.body;
-    const userId = req.user._id; // From protectRoute middleware
+    const userId = req.user._id;
 
     const updateFields = {};
 
@@ -266,7 +265,6 @@ const updateProfile = async (req, res) => {
         return res.status(400).json({ message: "Invalid email format" });
       }
 
-      // Check if email is already used by another user
       const existing = await Credential.findOne({ email });
       if (existing && existing._id.toString() !== userId.toString()) {
         return res.status(409).json({ message: "Email already in use" });
@@ -278,24 +276,30 @@ const updateProfile = async (req, res) => {
     // Validate full name
     if (fullName) {
       if (!validator.isLength(fullName, { min: 2, max: 50 })) {
-        return res.status(400).json({ message: "Full name must be between 2 and 50 characters" });
+        return res.status(400).json({
+          message: "Full name must be between 2 and 50 characters",
+        });
       }
       updateFields.fullName = validator.escape(fullName.trim());
     }
 
     // Validate and upload profile picture
     if (profilePic) {
-      // Basic type check (base64 image string)
-      if (!profilePic.startsWith("data:image/")) {
-        return res.status(400).json({ message: "Only image files are allowed" });
+      // Extract MIME type from base64 string
+      const mimeTypeMatch = profilePic.match(/^data:(image\/\w+);base64,/);
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!mimeTypeMatch || !allowedMimeTypes.includes(mimeTypeMatch[1])) {
+        return res.status(400).json({
+          message: "Invalid image type. Only JPG, PNG, or WEBP allowed.",
+        });
       }
 
       try {
         const uploadResponse = await cloudinary.uploader.upload(profilePic, {
           folder: "user_profile_pics",
           transformation: [{ width: 150, height: 150, crop: "fill" }],
-          allowed_formats: ["jpg", "jpeg", "png", "webp"],
-          public_id: `profile_${userId}`, 
+          public_id: `profile_${userId}`,
         });
 
         updateFields.profilePic = uploadResponse.secure_url;
@@ -307,17 +311,17 @@ const updateProfile = async (req, res) => {
       }
     }
 
-    // If no update fields, return early
     if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ message: "No fields provided for update" });
+      return res
+        .status(400)
+        .json({ message: "No fields provided for update" });
     }
 
-    // Update user
     const updatedUser = await Credential.findByIdAndUpdate(
       userId,
       updateFields,
       { new: true, runValidators: true }
-    ).select("-password -__v"); // Remove sensitive fields
+    ).select("-password -__v");
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
@@ -325,16 +329,13 @@ const updateProfile = async (req, res) => {
 
     res.status(200).json(updatedUser);
 
-
     await logActivity({
-  userId: userId,
-  action: "update_profile",
-  details: { updatedFields: Object.keys(updateFields) },
-  ip: req.ip,
-  userAgent: req.headers["user-agent"],
-});
-
-
+      userId: userId,
+      action: "update_profile",
+      details: { updatedFields: Object.keys(updateFields) },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
   } catch (error) {
     console.error("Error updating profile:", error);
     res.status(500).json({
@@ -343,6 +344,9 @@ const updateProfile = async (req, res) => {
     });
   }
 };
+
+
+
 
 const checkAuth = (req, res) => {
   try {
