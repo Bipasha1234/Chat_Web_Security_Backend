@@ -1,17 +1,19 @@
 const jwt = require("jsonwebtoken");
 
-const generateTokens = (userId, res) => {
-  // Short-lived access token (e.g., 1 hour)
-  const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, {
+const generateTokens = async (user, res) => {
+  const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
     expiresIn: "1h",
   });
 
-  // Long-lived refresh token (e.g., 7 days)
-  const refreshToken = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
+  const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: "7d",
   });
 
-  // Send access token in HTTP-only cookie
+  // Store refresh token in DB for revocation management
+  user.refreshTokens.push(refreshToken);
+  await user.save();
+
+  // Set cookies as before
   res.cookie("accessToken", accessToken, {
     maxAge: 60 * 60 * 1000, // 1 hour
     httpOnly: true,
@@ -19,7 +21,6 @@ const generateTokens = (userId, res) => {
     secure: true,
   });
 
-  // Send refresh token in HTTP-only cookie
   res.cookie("refreshToken", refreshToken, {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     httpOnly: true,

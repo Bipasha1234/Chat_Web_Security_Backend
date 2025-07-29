@@ -8,6 +8,7 @@ const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");  
 const validator = require("validator");
 const logActivity = require('../config/logger.js');
+const generateTokens = require('../config/utils.js');
 
 // const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
 const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
@@ -214,11 +215,11 @@ const verifyMfaCode = async (req, res) => {
     user.mfaCodeExpires = null;
     await user.save();
 
-    const token = generateToken(user._id, res);
+    // Pass full user document and await the async function
+    const { accessToken, refreshToken } = await generateTokens(user, res);
 
     res.status(200).json({
       message: "Login successful",
-      token,
       user: {
         _id: user._id,
         fullName: user.fullName,
@@ -235,23 +236,38 @@ const verifyMfaCode = async (req, res) => {
 
 
 
-// Logout route (Clear the cookie)
 const logout = async (req, res) => {
   try {
-    await logActivity({
-      userId: req.user._id,
-      action: "logout",
-      details: {},
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
+    const refreshToken = req.cookies.refreshToken;
+
+    if (refreshToken && req.user) {
+      // Remove refresh token from user's refreshTokens array in DB
+      await Credential.findByIdAndUpdate(req.user._id, {
+        $pull: { refreshTokens: refreshToken },
+      });
+    }
+
+    // Clear both cookies using the same settings as when they were set
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
     });
-    res.cookie("jwt", "", { maxAge: 0 });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+    });
+
     res.status(200).json({ message: "Logged out successfully" });
-  } catch (error) {
-    console.log("Error in logout controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+    console.error("Logout error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 const updateProfile = async (req, res) => {
   try {
