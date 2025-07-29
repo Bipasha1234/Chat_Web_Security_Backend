@@ -1,18 +1,25 @@
 const { Server } = require("socket.io");
-const http = require("http");
+const https = require("https");
+const fs = require("fs");
 const express = require("express");
 
 const app = express();
-const server = http.createServer(app);
+
+const httpsOptions = {
+  key: fs.readFileSync('server.key'),
+  cert: fs.readFileSync('server.cert'),
+};
+
+const server = https.createServer(httpsOptions, app);
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000"],
+    origin: ["https://localhost:3000"],
+    credentials: true,
   },
 });
 
-// used to store online users
-const userSocketMap = {}; // {userId: socketId}
+const userSocketMap = {};
 
 function getReceiverSocketId(userId) {
   return userSocketMap[userId];
@@ -24,7 +31,6 @@ io.on("connection", (socket) => {
   const userId = socket.handshake.query.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
-  // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   socket.on("disconnect", () => {
@@ -34,5 +40,4 @@ io.on("connection", (socket) => {
   });
 });
 
-// Use module.exports to export the objects
 module.exports = { app, io, server, getReceiverSocketId };
