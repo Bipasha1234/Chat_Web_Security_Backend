@@ -9,6 +9,7 @@ const dotenv = require("dotenv");
 const helmet = require("helmet");
 const connectDb = require("./config/db");
 const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
 const { initSocket } = require("./config/socket");
 
 const AuthRouter = require("./routes/authRoute");
@@ -55,6 +56,7 @@ app.get("/api/csrf-token", (req, res) => {
 // Middleware to sanitize data
 app.use(mongoSanitize());
 
+app.use(xss());   // Apply xss-clean middleware
 
 
 // API routes
