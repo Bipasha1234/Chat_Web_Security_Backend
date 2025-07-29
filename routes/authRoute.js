@@ -10,7 +10,7 @@ const  protectRoute  = require("../security/Auth");
 router.post("/login", loginStep1)
 router.post("/verify-mfa", verifyMfaCode); 
 router.post("/register",register)
-router.post("/logout",logout)
+router.post("/logout",protectRoute,logout)
 router.get("/check",protectRoute,checkAuth)
 
 

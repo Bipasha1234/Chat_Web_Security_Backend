@@ -1,18 +1,22 @@
-const express = require('express');
-const cookieParser =require( "cookie-parser");
+const https = require("https");
+const fs = require("fs");
+const express = require("express");
+const cookieParser = require("cookie-parser");
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const connectDb = require('./config/db');
 const AuthRouter = require('./routes/authRoute');
 const MessageRouter = require('./routes/messageRoute');
-const { app, server } =require( "./config/socket");
 const GroupRouter = require('./routes/groupRoute');
 const TipRouter = require('./routes/paymentRoute');
 const AdminRouter = require('./routes/adminRoute');
-const dotenv =require("dotenv");
+const dotenv = require("dotenv");
 const helmet = require('helmet');
+const { initSocket } = require('./config/socket');
 
 dotenv.config();
+
+const app = express();
 app.use(cookieParser());
 connectDb();
 
@@ -29,17 +33,14 @@ app.use(
   })
 );
 
-
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests, please try again later.',
 });
 app.use(limiter);
 
 app.use(helmet());
-
-
 
 // Routes setup
 app.use('/api/auth', AuthRouter);
@@ -48,9 +49,15 @@ app.use('/api/groups', GroupRouter);
 app.use('/api/payments', TipRouter);
 app.use('/api', AdminRouter);
 
-module.exports = app; 
+// SSL Options
+const httpsOptions = {
+  key: fs.readFileSync('D:/chat_app_website_backend_security/ssl/server.key'),
+  cert: fs.readFileSync('D:/chat_app_website_backend_security/ssl/server.crt'),
+};
+
+const server = https.createServer(httpsOptions, app);
+initSocket(server);  // Initialize socket.io on the same server
 
 server.listen(PORT, () => {
-  console.log("server is running on PORT:" + PORT);
-  
+  console.log("Server is running securely on PORT: " + PORT);
 });
