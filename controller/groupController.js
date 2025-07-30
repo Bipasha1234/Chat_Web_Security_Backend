@@ -237,22 +237,26 @@ const leaveGroup = async (req, res) => {
     const { groupId } = req.params;
     const userId = req.user._id;
 
-    // Find the group by ID
+    // Find the group
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
-    // Remove user from the group members
-    group.members = group.members.filter(member => member.toString() !== userId.toString());
+    // Ensure user is part of the group
+    const isMember = group.members.includes(userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ error: "You are not a member of this group" });
+    }
 
-    // If there are no members left, delete the group
+    // Remove the user from members
+    group.members = group.members.filter(
+      (memberId) => memberId.toString() !== userId.toString()
+    );
+
+    // If no members left, delete the group
     if (group.members.length === 0) {
       await Group.findByIdAndDelete(groupId);
-      return res.status(200).json({ message: "Group deleted as it had no members left" });
-    } else {
-      // Save the group if there are still members
-      await group.save();
-    }
-    await logActivity({
+
+      await logActivity({
         userId,
         action: "delete_group_no_members",
         details: { groupId },
@@ -260,18 +264,33 @@ const leaveGroup = async (req, res) => {
         userAgent: req.headers["user-agent"],
       });
 
+      return res.status(200).json({ message: "Group deleted as it had no members left" });
+    }
+    // Save updated group
+    await group.save();
+
+    await logActivity({
+      userId,
+      action: "left_group",
+      details: { groupId },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(200).json({ message: "Successfully left the group" });
   } catch (error) {
-    console.error("Error leaving the group:", error); // Log the error for debugging
+    console.error("Error leaving the group:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 
 const updateGroupProfilePic = async (req, res) => {
   try {
     const { profilePic } = req.body; // Base64 image string with data URI
     const groupId = req.params.groupId;
+    const userId = req.user._id; // Auth middleware should attach this
 
     if (!profilePic) {
       return res.status(400).json({ message: "Profile pic is required" });
@@ -285,29 +304,40 @@ const updateGroupProfilePic = async (req, res) => {
 
     const mimeType = matches[1];
     const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-
     if (!allowedMimeTypes.includes(mimeType)) {
       return res.status(400).json({ message: "Only JPG, PNG, or WEBP images are allowed." });
     }
 
-    // Upload image to Cloudinary
+    // Get the group from DB
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Ensure user is in the group or is the group admin
+    const isMember = group.members.includes(userId);
+    const isAdmin = group.admin && group.admin.toString() === userId.toString();
+
+    if (!isMember && !isAdmin) {
+      return res.status(403).json({ message: "You are not authorized to update this group." });
+    }
+
+    // Upload to Cloudinary
     const uploadResponse = await cloudinary.uploader.upload(profilePic, {
       folder: "group_pics",
     });
 
-    // Update group with new image URL
-    const updatedGroup = await Group.findByIdAndUpdate(
-      groupId,
-      { profilePic: uploadResponse.secure_url },
-      { new: true }
-    );
+    // Update group image
+    group.profilePic = uploadResponse.secure_url;
+    await group.save();
 
-    res.status(200).json(updatedGroup);
+    res.status(200).json(group);
   } catch (error) {
     console.error("Error updating group profile:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 const updateGroupName = async (req, res) => {
