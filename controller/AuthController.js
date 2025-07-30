@@ -236,7 +236,7 @@ const verifyMfaCode = async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
-    const { accessToken, refreshToken } = await generateTokens(user, res);
+    const token = generateToken(user._id, res);
 
     res.status(200).json({
       message: "Login successful",
@@ -258,15 +258,7 @@ const verifyMfaCode = async (req, res) => {
 
 const logout = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
-
-    if (refreshToken && req.user) {
-      // Remove refresh token from user's refreshTokens array in DB
-      await Credential.findByIdAndUpdate(req.user._id, {
-        $pull: { refreshTokens: refreshToken },
-      });
-
-      // Log logout activity
+    if (req.user) {
       await logActivity({
         userId: req.user._id,
         action: "logout",
@@ -276,17 +268,12 @@ const logout = async (req, res) => {
       });
     }
 
-    // Clear both cookies using the same settings as when they were set
-    res.clearCookie("accessToken", {
+    // Clear the JWT cookie properly
+    res.cookie("jwt", "", {
       httpOnly: true,
-      sameSite: "none",
-      secure: true,
-    });
-
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      sameSite: "none",
-      secure: true,
+      secure: true,           // since you use HTTPS
+      sameSite: "none",       // allow cross-site cookie clearing
+      maxAge: 0,              // expire immediately
     });
 
     res.status(200).json({ message: "Logged out successfully" });
@@ -295,6 +282,7 @@ const logout = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 const updateProfile = async (req, res) => {

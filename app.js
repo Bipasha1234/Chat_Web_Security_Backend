@@ -29,8 +29,6 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-
-
 app.use(
   cors({
     origin: "https://localhost:3000", // React frontend
@@ -69,32 +67,6 @@ app.use("/api/messages", MessageRouter);
 app.use("/api/groups", GroupRouter);
 app.use("/api/payments", TipRouter);
 app.use("/api", AdminRouter);
-
-app.post('/refresh-token', async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) return res.status(401).json({ message: 'No refresh token' });
-
-  try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
-    // Find user and check if refreshToken exists in DB
-    const user = await Credential.findById(decoded.userId);
-    if (!user || !user.refreshTokens.includes(refreshToken)) {
-      return res.status(403).json({ message: 'Refresh token invalid or revoked' });
-    }
-
-    // Generate new access token
-    const newAccessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-    res.cookie('accessToken', newAccessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 3600000 });
-
-    res.json({ accessToken: newAccessToken });
-  } catch (err) {
-    return res.status(403).json({ message: 'Invalid or expired refresh token' });
-  }
-});
-
-
 
 
 // SSL certificate

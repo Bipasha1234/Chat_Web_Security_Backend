@@ -54,10 +54,6 @@ mfaCode: { type: String },
 mfaCodeExpires: { type: Date },
 passwordHistory: [{ type: String }], // Store hashes of old passwords
   passwordLastChanged: { type: Date, default: Date.now },
-   refreshTokens: {
-    type: [String],
-    default: [],  // Initialize as empty array by default
-  },
   },
 
   
