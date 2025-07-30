@@ -210,7 +210,6 @@ const loginStep1 = async (req, res) => {
 };
 
 
-
 const verifyMfaCode = async (req, res) => {
   const { email, code } = req.body;
   try {
@@ -228,7 +227,15 @@ const verifyMfaCode = async (req, res) => {
     user.mfaCodeExpires = null;
     await user.save();
 
-    // Pass full user document and await the async function
+    // Log successful MFA verification (login success)
+    await logActivity({
+      userId: user._id,
+      action: "login_step2_success",
+      details: { email },
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     const { accessToken, refreshToken } = await generateTokens(user, res);
 
     res.status(200).json({
@@ -257,6 +264,15 @@ const logout = async (req, res) => {
       // Remove refresh token from user's refreshTokens array in DB
       await Credential.findByIdAndUpdate(req.user._id, {
         $pull: { refreshTokens: refreshToken },
+      });
+
+      // Log logout activity
+      await logActivity({
+        userId: req.user._id,
+        action: "logout",
+        details: {},
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
       });
     }
 
