@@ -81,5 +81,5 @@ initSocket(server);
 
 const PORT = process.env.PORT;
 server.listen(PORT, () => {
-  console.log("Server is running securely on PORT: " + PORT);
+  // console.log("Server is running securely on PORT: " + PORT);
 });

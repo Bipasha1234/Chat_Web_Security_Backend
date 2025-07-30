@@ -150,7 +150,7 @@ if (
       documentName: documentName || null,
     });
     await newMessage.save();
-        console.log("Message sent:", newMessage);
+        // console.log("Message sent:", newMessage);
 
 
      // Log activity here

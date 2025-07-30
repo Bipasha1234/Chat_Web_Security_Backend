@@ -39,7 +39,7 @@ dotenv.config();
 
 
 const register = async (req, res) => {
-   console.log("Incoming cookies:", req.cookies);
+  //  console.log("Incoming cookies:", req.cookies);
   const { fullName, email, password, profilePic } = req.body;
 
   try {
@@ -100,7 +100,7 @@ const register = async (req, res) => {
       profilePic: newUser.profilePic,
     });
   } catch (error) {
-    console.log("Error in signup controller", error.message);
+    // console.log("Error in signup controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -385,7 +385,7 @@ const checkAuth = (req, res) => {
   try {
     res.status(200).json(req.user);
   } catch (error) {
-    console.log("Error in checkAuth controller", error.message);
+    // console.log("Error in checkAuth controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

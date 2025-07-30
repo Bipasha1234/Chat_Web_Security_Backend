@@ -93,7 +93,7 @@ router.post(
       });
 
       await newTip.save();
-      console.log(`[Tip] User ${req.user._id.toString().slice(-4)} tipped receiver ${receiverId.toString().slice(-4)} amount: [HIDDEN]`);
+      // console.log(`[Tip] User ${req.user._id.toString().slice(-4)} tipped receiver ${receiverId.toString().slice(-4)} amount: [HIDDEN]`);
 
       res.status(201).json({ message: "Tip saved successfully", tip: newTip });
     } catch (error) {

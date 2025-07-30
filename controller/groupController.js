@@ -370,11 +370,11 @@ const updateGroupProfilePic = async (req, res) => {
     }
 
     // Upload to Cloudinary
-    console.log("Uploading image to Cloudinary...");
+    // console.log("Uploading image to Cloudinary...");
     const uploadResponse = await cloudinary.uploader.upload(profilePic, {
       folder: "group_pics",
     });
-    console.log("Upload response:", uploadResponse);
+    // console.log("Upload response:", uploadResponse);
 
     // Update group image
     group.profilePic = uploadResponse.secure_url;

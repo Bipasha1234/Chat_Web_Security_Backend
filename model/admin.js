@@ -19,7 +19,7 @@ const createAdmin = async () => {
     });
 
     await admin.save();
-    console.log("Admin created successfully");
+    // console.log("Admin created successfully");
   } catch (err) {
     console.error("Failed to create admin:", err.message);
   } finally {
