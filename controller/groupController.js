@@ -86,46 +86,65 @@ const sendGroupMessage = async (req, res) => {
   }
 };
 
-
 const createGroup = async (req, res) => {
   try {
     const { groupName, members, profilePic } = req.body;
     const userId = req.user?._id;
 
-    if (!groupName || !members || members.length < 2) {
+    if (!groupName || !members || !Array.isArray(members) || members.length < 1) {
       return res.status(400).json({ message: "Group name and at least 2 members are required" });
     }
 
+    // Validate groupName
+    if (typeof groupName !== 'string' || groupName.trim().length === 0 || groupName.length > 100) {
+      return res.status(400).json({ message: "Invalid group name" });
+    }
+
+    // Validate members: ensure all are valid ObjectId and exist in DB
+    const validMemberIds = members.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validMemberIds.length !== members.length) {
+      return res.status(400).json({ message: "Invalid member IDs in list" });
+    }
+
+    const usersExist = await User.find({ _id: { $in: validMemberIds } }).countDocuments();
+    if (usersExist !== validMemberIds.length) {
+      return res.status(400).json({ message: "One or more members do not exist" });
+    }
+
+    // Ensure userId not duplicated in members array
+    const uniqueMembers = Array.from(new Set([userId.toString(), ...validMemberIds]));
+
     const newGroup = new Group({
-      name: groupName,
+      name: groupName.trim(),
       profilePic: profilePic || "",
-      members: [userId, ...members],
+      members: uniqueMembers,
       createdBy: userId,
-      admin: userId, 
-      
+      admin: userId,
     });
 
     await newGroup.save();
-     await logActivity({
-      userId: userId,
+
+    await logActivity({
+      userId,
       action: "create_group",
-      details: { groupId: newGroup._id, groupName: groupName },
+      details: { groupId: newGroup._id, groupName },
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
+
     res.status(201).json({ message: "Group created successfully", group: newGroup });
   } catch (error) {
-    console.error(" Error creating group:", error);
+    console.error("Error creating group:", error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-
 
 
 const getGroups = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Find groups where user is a member
     const groups = await Group.find({ members: userId })
       .populate("members", "fullName profilePic")
       .populate("admin", "fullName profilePic")
@@ -136,29 +155,30 @@ const getGroups = async (req, res) => {
       .select("name profilePic messages members createdAt")
       .lean();
 
-    // Decrypt latest message text
     const formattedGroups = groups.map((group) => {
       const latestMessage = group.messages.length > 0 ? group.messages[group.messages.length - 1] : null;
 
       return {
         ...group,
-        latestMessage: latestMessage
+        latestMessage: latestMessage && latestMessage.senderId
           ? {
               text: decrypt(latestMessage.text) || null,
               type: "text",
-              sender: latestMessage.senderId.fullName,
+              sender: latestMessage.senderId.fullName || "Unknown",
             }
           : null,
         groupCreatedAt: group.createdAt,
+        messages: undefined, // exclude messages array from response for efficiency
       };
     });
 
     res.status(200).json(formattedGroups);
   } catch (error) {
     console.error("Error fetching groups:", error);
-    res.status(500).json({ message: "Error fetching groups", error });
+    res.status(500).json({ message: "Error fetching groups" });
   }
 };
+
 
 
 
@@ -166,14 +186,21 @@ const getGroups = async (req, res) => {
 const getGroupMessages = async (req, res) => {
   try {
     const { groupId } = req.params;
+    const userId = req.user._id; // Assumes auth middleware sets req.user
 
+    // Find group and populate sender info for messages
     const group = await Group.findById(groupId)
       .populate("messages.senderId", "fullName profilePic")
-      .select("messages profilePic name");
+      .select("messages profilePic name members");
 
     if (!group) return res.status(404).json({ error: "Group not found" });
 
-    // Decrypt all messages before sending
+    // Check if the requesting user is a member of the group
+    if (!group.members.some(memberId => memberId.toString() === userId.toString())) {
+      return res.status(403).json({ error: "Access denied. You are not a member of this group." });
+    }
+
+    // Decrypt messages text before sending
     const decryptedMessages = group.messages.map((msg) => {
       const msgObj = msg.toObject();
       msgObj.text = decrypt(msgObj.text);
@@ -186,35 +213,51 @@ const getGroupMessages = async (req, res) => {
       groupName: group.name,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error getting group messages:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 const addUserToGroup = async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userId } = req.body;
+    const loggedInUserId = req.user._id;
+
+    // Validate userId format
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ error: "Invalid or missing user ID" });
     }
-    // Convert userId to ObjectId
+
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    // Find group by ID
+
+    // Find group
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
-    // Check if user exists in the user database
+
+    // Check if logged-in user is a member of the group
+    const isMember = group.members.some(member =>
+      member.toString() === loggedInUserId.toString()
+    );
+    if (!isMember) {
+      return res.status(403).json({ error: "You must be a group member to add users" });
+    }
+
+    // Check if target user exists
     const user = await User.findById(userObjectId);
     if (!user) return res.status(404).json({ error: "User not found" });
-    // Check if user is already in the group
+
+    // Prevent duplicate
     if (group.members.some(member => member.toString() === userObjectId.toString())) {
       return res.status(400).json({ error: "User is already in the group" });
     }
-    // Add user to the group
+
+    // Add user
     group.members.push(userObjectId);
     await group.save();
 
-      // Log activity
+    // Log activity
     await logActivity({
       userId: loggedInUserId,
       action: "add_user_to_group",
@@ -225,12 +268,14 @@ const addUserToGroup = async (req, res) => {
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
+
     res.status(200).json({ message: "User added to group", group });
   } catch (error) {
-    console.error(error);
+    console.error("Error adding user to group:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 const leaveGroup = async (req, res) => {
   try {
@@ -315,7 +360,9 @@ const updateGroupProfilePic = async (req, res) => {
     }
 
     // Ensure user is in the group or is the group admin
-    const isMember = group.members.includes(userId);
+    const isMember = group.members.some(
+      (memberId) => memberId.toString() === userId.toString()
+    );
     const isAdmin = group.admin && group.admin.toString() === userId.toString();
 
     if (!isMember && !isAdmin) {
@@ -323,9 +370,11 @@ const updateGroupProfilePic = async (req, res) => {
     }
 
     // Upload to Cloudinary
+    console.log("Uploading image to Cloudinary...");
     const uploadResponse = await cloudinary.uploader.upload(profilePic, {
       folder: "group_pics",
     });
+    console.log("Upload response:", uploadResponse);
 
     // Update group image
     group.profilePic = uploadResponse.secure_url;
