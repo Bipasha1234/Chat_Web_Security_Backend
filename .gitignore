@@ -1,2 +1,4 @@
 .env
 node_modules
+# SSL certificates and keys
+ssl/
