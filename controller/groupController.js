@@ -3,7 +3,7 @@ const User = require("../model/credential");
 const cloudinary = require("../config/cloudinary");  
 const mongoose = require("mongoose");
 const logActivity = require("../config/logger.js");
-
+const { encrypt ,decrypt} = require("../middleware/encryption.js");
 
 const sendGroupMessage = async (req, res) => {
   try {
@@ -29,27 +29,39 @@ const sendGroupMessage = async (req, res) => {
       return res.status(400).json({ error: "Invalid message text" });
     }
 
+    // Find the group
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
+    // Check if sender is a group member
     if (!group.members.some(memberId => memberId.toString() === senderId.toString())) {
       return res.status(403).json({ error: "You are not a member of this group" });
     }
 
-    // Create message object 
+    // Encrypt the message text
+    const encryptedText = encrypt(text.trim());
+
+    // Create new message object with encrypted text
     const newMessage = {
       senderId,
-      text: text.trim(),
+      text: encryptedText,
       createdAt: new Date(),
     };
 
-    // Push and save
+    // Add message and save group
     group.messages.push(newMessage);
     await group.save();
 
-    // Populate sender details for response
+    // Populate sender details in messages (for response)
     await group.populate('messages.senderId', 'fullName profilePic');
 
+    // Get the newly added message (last in array)
+    const savedMessage = group.messages[group.messages.length - 1].toObject();
+
+    // Decrypt text before sending response
+    savedMessage.text = decrypt(savedMessage.text);
+
+    // Log the action
     await logActivity({
       userId: senderId,
       action: "send_group_message",
@@ -63,16 +75,16 @@ const sendGroupMessage = async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
+    // Send response with decrypted message
     res.status(201).json({
       message: "Message sent",
-      newMessage: group.messages[group.messages.length - 1],
+      newMessage: savedMessage,
     });
   } catch (error) {
     console.error("sendGroupMessage error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 
 const createGroup = async (req, res) => {
@@ -111,8 +123,6 @@ const createGroup = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-
-
 const getGroups = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -127,7 +137,7 @@ const getGroups = async (req, res) => {
       .select("name profilePic messages members createdAt")
       .lean();
 
-    // Extract latest message text only
+    // Decrypt latest message text
     const formattedGroups = groups.map((group) => {
       const latestMessage = group.messages.length > 0 ? group.messages[group.messages.length - 1] : null;
 
@@ -135,7 +145,7 @@ const getGroups = async (req, res) => {
         ...group,
         latestMessage: latestMessage
           ? {
-              text: latestMessage.text || null,
+              text: decrypt(latestMessage.text) || null,
               type: "text",
               sender: latestMessage.senderId.fullName,
             }
@@ -164,14 +174,20 @@ const getGroupMessages = async (req, res) => {
 
     if (!group) return res.status(404).json({ error: "Group not found" });
 
+    // Decrypt all messages before sending
+    const decryptedMessages = group.messages.map((msg) => {
+      const msgObj = msg.toObject();
+      msgObj.text = decrypt(msgObj.text);
+      return msgObj;
+    });
 
     res.status(200).json({
-      messages: group.messages,
+      messages: decryptedMessages,
       profilePic: group.profilePic,
       groupName: group.name,
     });
   } catch (error) {
-    console.error(error); 
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

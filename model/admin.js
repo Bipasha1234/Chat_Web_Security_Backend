@@ -13,7 +13,7 @@ const createAdmin = async () => {
 
     const admin = new Credential({
       email: ADMIN_EMAIL,
-      fullName: "Admin User",
+      fullName: "Biadm ain",
       password: hashedPassword,
       role: "admin",
     });

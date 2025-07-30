@@ -8,8 +8,7 @@ const messageSchema = new mongoose.Schema(
     image: { type: String },
     audio: { type: String, default: "" },
     document: { type: String },
-    documentName: { type: String, default: "Document" },
-    isSeen: { type: Boolean, default: false }, 
+    documentName: { type: String, default: "" },
     deletedBy: { type: [mongoose.Schema.Types.ObjectId], default: [] },
   },
   { timestamps: true }

@@ -1,105 +1,26 @@
 const User1 = require("../model/credential.js");
 const Message = require("../model/message.js");
-const { encrypt, decrypt } = require('../config/crypto.js'); // adjust path
 const mongoose = require("mongoose");
 const logActivity = require("../config/logger.js");
-
 const cloudinary = require("../config/cloudinary.js");
 const { getReceiverSocketId, io } = require("../config/socket.js");
+const { decrypt, encrypt } = require("../middleware/encryption.js");
+
+
 
 const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
-    // Get users excluding the logged-in user
-    const filteredUsers = await User1.find({ _id: { $ne: loggedInUserId } }).select("-password");
+    // Fetch users excluding the logged-in user
+    const users = await User1.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
-    // Fetch the latest message for each user, excluding deleted messages
-    const usersWithLatestMessage = await Promise.all(
-      filteredUsers.map(async (user) => {
-        const latestMessage = await Message.findOne({
-          $or: [
-            { senderId: loggedInUserId, receiverId: user._id },
-            { senderId: user._id, receiverId: loggedInUserId },
-          ],
-          deletedBy: { $ne: loggedInUserId }, 
-        })
-          .sort({ createdAt: -1 }) // Sort by most recent
-          .limit(1);
+    // Convert Mongoose documents to plain objects
+    const usersList = users.map(user => user.toObject());
 
-        let latestMessageText = "No messages yet";
-        let isUnread = false; // Track unread status
-
-        if (latestMessage) {
-          if (latestMessage.text) {
-            latestMessageText = latestMessage.text;
-          } else if (latestMessage.image) {
-            latestMessageText = "📷 Photo";
-          } else if (latestMessage.audio) {
-            latestMessageText = "🎵 Audio";
-          } else if (latestMessage.document) {
-            latestMessageText = "📄 Document";
-          }
-          if (
-            latestMessage.receiverId.toString() === loggedInUserId.toString() &&
-            !latestMessage.isSeen
-          ) {
-            isUnread = true;
-          }
-        }
-
-        return {
-          ...user.toObject(),
-          latestMessage: latestMessage ? latestMessageText : "No messages ", 
-          lastMessageTime: latestMessage ? latestMessage.createdAt : null,
-          isUnread, 
-        };
-      })
-    );
-
-    usersWithLatestMessage.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-
-    
-
-    res.status(200).json(usersWithLatestMessage);
+    res.status(200).json(usersList);
   } catch (error) {
-    console.error("Error in getUsersForSidebar: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-
-const markMessagesAsSeen = async (req, res) => {
-  try {
-    const { senderId } = req.body; // Sender whose messages should be marked as read
-    const receiverId = req.user._id; // The logged-in user (recipient)
-
-    await Message.updateMany(
-      { senderId, receiverId, isSeen: false },
-      { $set: { isSeen: true } }
-    );
-
-    res.status(200).json({ success: true, message: "Messages marked as seen" });
-  } catch (error) {
-    console.error("Error marking messages as seen:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-const markMessagesAsUnread = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const loggedInUserId = req.user._id; // Get the logged-in user
-
-    // Update messages from the selected user, marking them as unseen
-    await Message.updateMany(
-      { senderId: userId, receiverId: loggedInUserId, isSeen: true },
-      { $set: { isSeen: false } }
-    );
-
-    res.status(200).json({ message: "Messages marked as unread" });
-  } catch (error) {
-    console.error("Error marking messages as unread:", error);
+    console.error("Error in getUsersForSidebar:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -279,8 +200,6 @@ await newMessage.save();
 };
 
 
-
-
 //In places like deleteChat, ensure users can't delete others' conversations
 const deleteChat = async (req, res) => {
   try {
@@ -290,8 +209,6 @@ const deleteChat = async (req, res) => {
     if (loggedInUserId.toString() !== req.user._id.toString()) {
   return res.status(403).json({ error: "Unauthorized" });
 }
-
-
     // Soft delete: Add user ID to `deletedBy`
     await Message.updateMany(
       {
@@ -428,7 +345,5 @@ module.exports = {
   deleteChat, 
   blockUser, 
   unblockUser,
-  getBlockedUsers  ,
-  markMessagesAsSeen,
-  markMessagesAsUnread
+  getBlockedUsers 
 };

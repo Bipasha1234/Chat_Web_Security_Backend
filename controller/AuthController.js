@@ -1,4 +1,3 @@
-
 const bcrypt = require('bcryptjs');
 const Credential = require("../model/credential");
 const generateToken = require("../config/utils.js");
@@ -15,11 +14,15 @@ const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
 const MAX_FAILED_ATTEMPTS = 10;
 const LOCK_TIME = 15 * 60 * 1000;
 
+
+
 const isPasswordExpired = (lastChanged) => {
   const now = new Date();
   const diff = (now - lastChanged) / (1000 * 60 * 60 * 24);
   return diff > PASSWORD_EXPIRY_DAYS;
 };
+
+
 
 const isPasswordReused = async (newPassword, history) => {
   for (let old of history) {
@@ -29,8 +32,12 @@ const isPasswordReused = async (newPassword, history) => {
   return false;
 };
 
+
+
 // Load environment variables
 dotenv.config();
+
+
 const register = async (req, res) => {
    console.log("Incoming cookies:", req.cookies);
   const { fullName, email, password, profilePic } = req.body;
@@ -97,6 +104,10 @@ const register = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
+
+
 const loginStep1 = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -198,6 +209,8 @@ const loginStep1 = async (req, res) => {
   }
 };
 
+
+
 const verifyMfaCode = async (req, res) => {
   const { email, code } = req.body;
   try {
@@ -266,7 +279,6 @@ const logout = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 
 const updateProfile = async (req, res) => {
@@ -374,16 +386,6 @@ const checkAuth = (req, res) => {
   }
 };
 
-const getCurrentUser = async (req, res) => {
-  const user = await Credential.findById(req.user._id).select("-password");
-
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
-  res.status(200).json(user);
-};
-
 // Create transporter
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -392,6 +394,9 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS, 
   },
 });
+
+
+
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
@@ -418,6 +423,8 @@ const forgotPassword = async (req, res) => {
   }
 };
 
+
+
 const verifyResetCode = async (req, res) => {
   const { email, resetCode } = req.body;
   try {
@@ -441,6 +448,8 @@ const verifyResetCode = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 const resetPassword = async (req, res) => {
   const { email, password } = req.body;
@@ -470,8 +479,6 @@ const resetPassword = async (req, res) => {
   ip: req.ip,
   userAgent: req.headers["user-agent"],
 });
-
-
     res.status(200).json({ message: "Password reset successfully" });
   } catch (err) {
     console.error("Reset password error:", err.message);
@@ -485,7 +492,6 @@ module.exports = {
   logout,
   checkAuth,
   updateProfile,
-  getCurrentUser, 
   forgotPassword,
   resetPassword,
   verifyResetCode,
