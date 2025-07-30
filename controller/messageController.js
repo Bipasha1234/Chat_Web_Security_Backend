@@ -71,18 +71,14 @@ const sendMessage = async (req, res) => {
     const { text, image, audio, document, documentName } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
-
     //  Validate receiver ID
     if (!mongoose.Types.ObjectId.isValid(receiverId)) {
       return res.status(400).json({ error: "Invalid receiver ID." });
     }
-
     //  Validate message text
     if (text && (typeof text !== "string" || text.length > 1000)) {
       return res.status(400).json({ error: "Invalid message text." });
     }
-
-
     // Reject empty message (no text, no image, no audio, no document)
 if (
   (!text || text.trim() === "") &&
@@ -92,17 +88,14 @@ if (
 ) {
   return res.status(400).json({ error: "Cannot send empty message." });
 }
-
     //  Check if receiver exists and has blocked the sender
     const receiver = await User1.findById(receiverId);
     if (!receiver) {
       return res.status(404).json({ error: "Receiver not found." });
     }
-
     if (receiver.blockedUsers.includes(senderId)) {
       return res.status(403).json({ error: "You have been blocked by this user." });
     }
-
     //  File upload handlers
     let imageUrl = "", audioUrl = "", documentUrl = "";
     //  Validate & Upload Image
@@ -141,27 +134,23 @@ if (
       });
       documentUrl = uploadResponse.secure_url;
     }
-
-    
-
-// Inside sendMessage controller:
-let encryptedText = null;
-if (text) {
-  encryptedText = encrypt(text);
-}
-
-// Then save encryptedText instead of plain text
-const newMessage = new Message({
-  senderId,
-  receiverId,
-  text: encryptedText,
-  image: imageUrl || null,
-  audio: audioUrl || null,
-  document: documentUrl || null,
-  documentName: documentName || null,
-});
-await newMessage.save();
-    console.log("Message sent:", newMessage);
+    // Inside sendMessage controller:
+    let encryptedText = null;
+    if (text) {
+      encryptedText = encrypt(text);
+    }
+    // Then save encryptedText instead of plain text
+    const newMessage = new Message({
+      senderId,
+      receiverId,
+      text: encryptedText,
+      image: imageUrl || null,
+      audio: audioUrl || null,
+      document: documentUrl || null,
+      documentName: documentName || null,
+    });
+    await newMessage.save();
+        console.log("Message sent:", newMessage);
 
 
      // Log activity here
@@ -185,7 +174,6 @@ await newMessage.save();
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
     }
-
     // Success response
     res.status(201).json({
       success: true,
@@ -313,8 +301,6 @@ const unblockUser = async (req, res) => {
   ip: req.ip,
   userAgent: req.headers["user-agent"],
 });
-
-
     res.status(200).json({
       blockedUsers: updatedUser.blockedUsers,
       unblockedUser: targetUser,
