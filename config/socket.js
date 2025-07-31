@@ -1,6 +1,7 @@
 const { Server } = require("socket.io");
 
 const userSocketMap = {};
+let ioInstance = null; // <-- holds the global io reference
 
 function getReceiverSocketId(userId) {
   return userSocketMap[userId];
@@ -9,21 +10,22 @@ function getReceiverSocketId(userId) {
 function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: ["https://localhost:3000"],
+      origin: ["https://localhost:4000"],
       credentials: true,
     },
   });
 
-  io.on("connection", (socket) => {
-    // console.log("A user connected", socket.id);
+  ioInstance = io; // save for use in other files
 
+  io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
-    if (userId) userSocketMap[userId] = socket.id;
+    if (userId) {
+      userSocketMap[userId] = socket.id;
+    }
 
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
     socket.on("disconnect", () => {
-      // console.log("A user disconnected", socket.id);
       delete userSocketMap[userId];
       io.emit("getOnlineUsers", Object.keys(userSocketMap));
     });
@@ -32,4 +34,13 @@ function initSocket(server) {
   return io;
 }
 
-module.exports = { initSocket, getReceiverSocketId };
+// Export this to access the `io` instance anywhere
+function getIO() {
+  return ioInstance;
+}
+
+module.exports = {
+  initSocket,
+  getReceiverSocketId,
+  getIO,
+};

@@ -18,7 +18,7 @@ const MessageRouter = require("./routes/messageRoute");
 const GroupRouter = require("./routes/groupRoute");
 const TipRouter = require("./routes/paymentRoute");
 const AdminRouter = require("./routes/adminRoute");
-
+const path = require("path");
 dotenv.config();
 
 const app = express();
@@ -31,7 +31,7 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(
   cors({
-    origin: "https://localhost:3000", // React frontend
+    origin: "https://localhost:4000", // Middleware
     credentials: true,
   })
 );
@@ -40,7 +40,19 @@ app.use(mongoSanitize());
 
 app.use(xss());   // Apply xss-clean middleware
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "script-src": ["'self'", "https://js.stripe.com"],
+        "frame-src": ["'self'", "https://js.stripe.com"],
+        "connect-src": ["'self'", "https://api.stripe.com"],
+      },
+    },
+  })
+);
+
 
 // Rate limiting
 const limiter = rateLimit({
@@ -60,7 +72,6 @@ app.get("/api/csrf-token", (req, res) => {
 });
 
 
-
 // API routes
 app.use("/api/auth", AuthRouter);
 app.use("/api/messages", MessageRouter);
@@ -68,6 +79,15 @@ app.use("/api/groups", GroupRouter);
 app.use("/api/payments", TipRouter);
 app.use("/api", AdminRouter);
 
+
+
+// Serve React static build files
+app.use(express.static(path.join(__dirname, 'build')));
+
+// Fallback for React Router (SPA support)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 
 // SSL certificate
 const httpsOptions = {

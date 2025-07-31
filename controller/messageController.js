@@ -3,7 +3,7 @@ const Message = require("../model/message.js");
 const mongoose = require("mongoose");
 const logActivity = require("../config/logger.js");
 const cloudinary = require("../config/cloudinary.js");
-const { getReceiverSocketId, io } = require("../config/socket.js");
+const { getReceiverSocketId, getIO } = require("../config/socket.js");
 const { decrypt, encrypt } = require("../middleware/encryption.js");
 
 
@@ -64,31 +64,28 @@ res.status(200).json(decryptedMessages);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
 const sendMessage = async (req, res) => {
   try {
-    const { text, image, audio, document, documentName } = req.body;
+    const { text, document, documentName } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
+
     //  Validate receiver ID
     if (!mongoose.Types.ObjectId.isValid(receiverId)) {
       return res.status(400).json({ error: "Invalid receiver ID." });
     }
+
     //  Validate message text
     if (text && (typeof text !== "string" || text.length > 1000)) {
       return res.status(400).json({ error: "Invalid message text." });
     }
-    // Reject empty message (no text, no image, no audio, no document)
-if (
-  (!text || text.trim() === "") &&
-  !image &&
-  !audio &&
-  !document
-) {
-  return res.status(400).json({ error: "Cannot send empty message." });
-}
-    //  Check if receiver exists and has blocked the sender
+
+    //  Reject empty messages (no text or document)
+    if ((!text || text.trim() === "") && !document) {
+      return res.status(400).json({ error: "Cannot send empty message." });
+    }
+
+    // Check if receiver exists and has blocked the sender
     const receiver = await User1.findById(receiverId);
     if (!receiver) {
       return res.status(404).json({ error: "Receiver not found." });
@@ -96,35 +93,17 @@ if (
     if (receiver.blockedUsers.includes(senderId)) {
       return res.status(403).json({ error: "You have been blocked by this user." });
     }
-    //  File upload handlers
-    let imageUrl = "", audioUrl = "", documentUrl = "";
-    //  Validate & Upload Image
-    if (image && typeof image === "string") {
-      if (!image.startsWith("data:image/")) {
-        return res.status(400).json({ error: "Invalid image format." });
-      }
-      const uploadResponse = await cloudinary.uploader.upload(image, {
-        resource_type: "image",
-      });
-      imageUrl = uploadResponse.secure_url;
-    }
 
-    //  Validate & Upload Audio
-    if (audio && typeof audio === "string") {
-      if (!audio.startsWith("data:audio/")) {
-        return res.status(400).json({ error: "Invalid audio format." });
-      }
-      const uploadResponse = await cloudinary.uploader.upload(audio, {
-        resource_type: "auto",
-      });
-      audioUrl = uploadResponse.secure_url;
-    }
-
-    //  Validate & Upload Document
+    //  Upload Document if provided
+    let documentUrl = null;
     if (document && typeof document === "string") {
-      if (!document.startsWith("data:application/") && !document.startsWith("data:text/")) {
+      if (
+        !document.startsWith("data:application/") &&
+        !document.startsWith("data:text/")
+      ) {
         return res.status(400).json({ error: "Invalid document format." });
       }
+
       const publicId = `documents/${Date.now()}-${(documentName || "file").split(".")[0]}`;
       const uploadResponse = await cloudinary.uploader.upload(document, {
         resource_type: "raw",
@@ -134,26 +113,25 @@ if (
       });
       documentUrl = uploadResponse.secure_url;
     }
-    // Inside sendMessage controller:
+
+    // Encrypt text if exists
     let encryptedText = null;
     if (text) {
       encryptedText = encrypt(text);
     }
-    // Then save encryptedText instead of plain text
+
+    // Save message to DB
     const newMessage = new Message({
       senderId,
       receiverId,
       text: encryptedText,
-      image: imageUrl || null,
-      audio: audioUrl || null,
       document: documentUrl || null,
       documentName: documentName || null,
     });
+
     await newMessage.save();
-        // console.log("Message sent:", newMessage);
 
-
-     // Log activity here
+    //  Log user activity
     await logActivity({
       userId: senderId,
       action: "send_message",
@@ -161,32 +139,35 @@ if (
         receiverId,
         messageId: newMessage._id,
         hasText: Boolean(text),
-        hasImage: Boolean(image),
-        hasAudio: Boolean(audio),
         hasDocument: Boolean(document),
       },
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
 
-    //  Emit via WebSocket (if user is online)
+    //  Emit message to receiver via WebSocket
     const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+    const io = getIO();
+
+    if (receiverSocketId && io) {
+      io.to(receiverSocketId).emit("newMessage", {
+        _id: newMessage._id,
+        senderId,
+        receiverId,
+        text,
+        document: documentUrl,
+        documentName,
+        createdAt: newMessage.createdAt,
+      });
     }
-    // Success response
-    res.status(201).json({
-      success: true,
-      message: "Message sent successfully",
-      data: newMessage,
-    });
+
+    res.status(201).json({ message: "Message sent successfully.", data: newMessage });
 
   } catch (error) {
     console.error("Error in sendMessage:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 //In places like deleteChat, ensure users can't delete others' conversations
 const deleteChat = async (req, res) => {
