@@ -10,12 +10,12 @@ const logActivity = require('../config/logger.js');
 const generateTokens = require('../config/utils.js');
 
 // const PASSWORD_EXPIRY_DAYS = 1 / (24 * 60); // 1 minute expiry for testing
-const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
+
 const MAX_FAILED_ATTEMPTS = 10;
 const LOCK_TIME = 15 * 60 * 1000;
 
 
-
+const PASSWORD_EXPIRY_DAYS = 90; // 90 days expiry
 const isPasswordExpired = (lastChanged) => {
   const now = new Date();
   const diff = (now - lastChanged) / (1000 * 60 * 60 * 24);
@@ -48,9 +48,9 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Password length min 8, max 64
-    if (password.length < 8 || password.length > 64) {
-      return res.status(400).json({ message: "Password must be between 8 and 64 characters" });
+    // Password length min 8, max 16
+    if (password.length < 8 || password.length > 16) {
+      return res.status(400).json({ message: "Password must be between 8 and 16 characters" });
     }
 
     // Password complexity: at least one uppercase, one lowercase, one digit, one special char
@@ -271,9 +271,9 @@ const logout = async (req, res) => {
     // Clear the JWT cookie properly
     res.cookie("jwt", "", {
       httpOnly: true,
-      secure: true,           // since you use HTTPS
-      sameSite: "none",       // allow cross-site cookie clearing
-      maxAge: 0,              // expire immediately
+      secure: true,           
+      sameSite: "none",       
+      maxAge: 0,             
     });
 
     res.status(200).json({ message: "Logged out successfully" });

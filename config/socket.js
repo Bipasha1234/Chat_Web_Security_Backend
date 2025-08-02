@@ -1,7 +1,7 @@
 const { Server } = require("socket.io");
 
 const userSocketMap = {};
-let ioInstance = null; // <-- holds the global io reference
+let ioInstance = null; 
 
 function getReceiverSocketId(userId) {
   return userSocketMap[userId];
@@ -15,7 +15,7 @@ function initSocket(server) {
     },
   });
 
-  ioInstance = io; // save for use in other files
+  ioInstance = io;
 
   io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;

@@ -333,9 +333,9 @@ const leaveGroup = async (req, res) => {
 
 const updateGroupProfilePic = async (req, res) => {
   try {
-    const { profilePic } = req.body; // Base64 image string with data URI
+    const { profilePic } = req.body; 
     const groupId = req.params.groupId;
-    const userId = req.user._id; // Auth middleware should attach this
+    const userId = req.user._id; 
 
     if (!profilePic) {
       return res.status(400).json({ message: "Profile pic is required" });

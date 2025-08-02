@@ -118,15 +118,14 @@ router.get("/get-tip/:messageId", protectRoute, async (req, res) => {
       return res.status(403).json({ message: "Unauthorized access" });
     }
 
-    // Decrypt amount (assuming amount is encrypted as string)
+    // Decrypt amount 
     let decryptedAmount = tip.amount;
     if (typeof tip.amount === "string") {
       decryptedAmount = parseFloat(decrypt(tip.amount));
     }
 
-    // Prepare response without exposing sensitive fields (e.g., maybe omit transactionId if needed)
     const responseTip = {
-      ...tip.toObject(),   // convert mongoose document to plain object
+      ...tip.toObject(),  
       amount: decryptedAmount,
     };
 

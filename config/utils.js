@@ -8,7 +8,7 @@ const generateToken = (userId, res) => {
   res.cookie("jwt", token, {
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
     httpOnly: true,
-    secure: true,           // since you use HTTPS
+    secure: true,         
     sameSite: "none",
   });
 

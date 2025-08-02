@@ -48,10 +48,12 @@ app.use(
         "script-src": ["'self'", "https://js.stripe.com"],
         "frame-src": ["'self'", "https://js.stripe.com"],
         "connect-src": ["'self'", "https://api.stripe.com"],
+        "img-src": ["'self'", "data:", "https://res.cloudinary.com"],
       },
     },
   })
 );
+
 
 
 // Rate limiting
@@ -101,5 +103,5 @@ initSocket(server);
 
 const PORT = process.env.PORT;
 server.listen(PORT, () => {
-  // console.log("Server is running securely on PORT: " + PORT);
+  console.log("Server is running securely on PORT: " + PORT);
 });
