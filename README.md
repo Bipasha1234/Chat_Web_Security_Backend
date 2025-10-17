@@ -20,9 +20,7 @@ GitHub Links:
 - Backend: Bipasha1234/Chat_Web_Security_Backend
 
 
-- Implemented advanced security measures for web applications
-- Secured sensitive data and payments
-- Learned real-time communication using Socket.IO
+Implemented advanced security measures for web applications, Secured sensitive data and payments, Learned real-time communication using Socket.IO
 
 Author: Bipasha Lamsal – Full-stack development and security implementation
 
