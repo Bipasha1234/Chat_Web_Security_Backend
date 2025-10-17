@@ -16,8 +16,8 @@ Key Functionalities:
 - Password policies and 2FA for security
 
 GitHub Links:
-Frontend: Bipasha1234/Chat_App_Website_Security_Frontend
-Backend: Bipasha1234/Chat_Web_Security_Backend
+- Frontend: Bipasha1234/Chat_App_Website_Security_Frontend
+- Backend: Bipasha1234/Chat_Web_Security_Backend
 
 
 - Implemented advanced security measures for web applications
